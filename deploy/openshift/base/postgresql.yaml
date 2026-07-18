@@ -1,7 +1,8 @@
 ---
-# PostgreSQL - OpenShift SCC準拠版
-# restricted-v2/v3 SCC に対応するため bitnami/postgresql を使用
-# fsGroup / runAsUser は OpenShift が自動割り当てするため明示しない
+# PostgreSQL - OpenShift restricted SCC 準拠版
+# quay.io/sclorg/postgresql は任意UID実行対応（OpenShift公式推奨系）
+# fsGroup / runAsUser は明示しない（OpenShift が自動割当）
+# 既存 PVC (lca-postgresql-pvc) を利用する
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,39 +15,61 @@ spec:
   selector:
     matchLabels:
       app: lca-postgresql
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
         app: lca-postgresql
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: postgresql
-          image: docker.io/bitnami/postgresql:16
+          image: quay.io/sclorg/postgresql-15-c9s:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5432
+              name: postgresql
           env:
             - name: POSTGRESQL_DATABASE
               value: lca_db
-            - name: POSTGRESQL_USERNAME
-              value: lca_user
+            - name: POSTGRESQL_USER
+              valueFrom:
+                secretKeyRef:
+                  name: lca-secret
+                  key: DB_USERNAME
             - name: POSTGRESQL_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: lca-secret
                   key: DB_PASSWORD
-            - name: BITNAMI_DEBUG
-              value: "false"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
           volumeMounts:
             - name: postgresql-data
-              mountPath: /bitnami/postgresql
+              mountPath: /var/lib/pgsql/data
           readinessProbe:
             exec:
               command:
-                - /bin/sh
-                - -c
-                - pg_isready -U lca_user -d lca_db
-            initialDelaySeconds: 15
+                - /usr/libexec/check-container
+            initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+                - /usr/libexec/check-container
+                - --live
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            timeoutSeconds: 5
           resources:
             requests:
               memory: "256Mi"
@@ -60,26 +83,17 @@ spec:
             claimName: lca-postgresql-pvc
 ---
 apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: lca-postgresql-pvc
-  namespace: legacy-code-archaeology-dev
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
----
-apiVersion: v1
 kind: Service
 metadata:
   name: lca-postgresql
   namespace: legacy-code-archaeology-dev
+  labels:
+    app: lca-postgresql
 spec:
   selector:
     app: lca-postgresql
   ports:
-    - protocol: TCP
+    - name: postgresql
+      protocol: TCP
       port: 5432
       targetPort: 5432

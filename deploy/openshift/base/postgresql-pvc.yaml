@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: lca-postgres-pvc
+  name: lca-postgresql-pvc
   namespace: legacy-code-archaeology-dev
 spec:
   accessModes:
@@ -9,4 +9,3 @@ spec:
   resources:
     requests:
       storage: 5Gi
-  storageClassName: ocs-external-storagecluster-ceph-rbd-immediate

@@ -1,7 +1,6 @@
 ---
-# Neo4j - OpenShift SCC準拠版
-# neo4j/neo4j イメージは anyuid 相当が必要なため
-# runAsNonRoot: true かつ OpenShift 自動割り当てを利用
+# Neo4j - OpenShift restricted SCC 準拠版
+# 既存 PVC (lca-neo4j-pvc) を利用する。PVC 定義は別ファイル/既存リソースを使用。
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,6 +13,8 @@ spec:
   selector:
     matchLabels:
       app: lca-neo4j
+  strategy:
+    type: Recreate
   template:
     metadata:
       labels:
@@ -21,9 +22,12 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: neo4j
           image: docker.io/library/neo4j:5-community
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 7474
               name: http
@@ -31,23 +35,48 @@ spec:
               name: bolt
           env:
             - name: NEO4J_AUTH
-              value: neo4j/neo4j_password
-            - name: NEO4J_dbms_security_auth__minimum__password__length
-              value: "8"
+              valueFrom:
+                secretKeyRef:
+                  name: lca-secret
+                  key: NEO4J_AUTH
+            - name: NEO4J_server_memory_heap_initial__size
+              value: "256m"
+            - name: NEO4J_server_memory_heap_max__size
+              value: "512m"
+            - name: NEO4J_server_directories_data
+              value: /data
+            - name: NEO4J_server_directories_logs
+              value: /logs
+            - name: NEO4J_server_directories_import
+              value: /var/lib/neo4j/import
+            - name: NEO4J_server_directories_plugins
+              value: /var/lib/neo4j/plugins
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
                 - ALL
+            runAsNonRoot: true
           volumeMounts:
             - name: neo4j-data
               mountPath: /data
+            - name: neo4j-logs
+              mountPath: /logs
           readinessProbe:
             httpGet:
               path: /
               port: 7474
-            initialDelaySeconds: 30
+            initialDelaySeconds: 40
             periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 7474
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            timeoutSeconds: 5
           resources:
             requests:
               memory: "512Mi"
@@ -59,24 +88,16 @@ spec:
         - name: neo4j-data
           persistentVolumeClaim:
             claimName: lca-neo4j-pvc
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: lca-neo4j-pvc
-  namespace: legacy-code-archaeology-dev
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
+        - name: neo4j-logs
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: lca-neo4j
   namespace: legacy-code-archaeology-dev
+  labels:
+    app: lca-neo4j
 spec:
   selector:
     app: lca-neo4j

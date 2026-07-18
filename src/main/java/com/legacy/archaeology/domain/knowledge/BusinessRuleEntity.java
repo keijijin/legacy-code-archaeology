@@ -1,6 +1,7 @@
 package com.legacy.archaeology.domain.knowledge;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.Getter;
@@ -36,8 +37,8 @@ public class BusinessRuleEntity {
     @Column(name = "confidence_level", nullable = false, length = 20)
     private ConfidenceLevel confidenceLevel;
 
-    @Column(name = "confidence_score")
-    private Double confidenceScore;
+    @Column(name = "confidence_score", precision = 5, scale = 4)
+    private BigDecimal confidenceScore;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "review_status", nullable = false, length = 20)

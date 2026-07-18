@@ -31,7 +31,9 @@ public class BusinessRuleController {
                                 .ruleText(r.getRuleText())
                                 .confidence(BusinessRuleDto.Confidence.builder()
                                         .level(r.getConfidenceLevel().name())
-                                        .score(r.getConfidenceScore())
+                                        .score(r.getConfidenceScore() == null
+                                                ? null
+                                                : r.getConfidenceScore().doubleValue())
                                         .build())
                                 .reviewStatus(r.getReviewStatus().name())
                                 .evidenceIds(r.getEvidenceIds())

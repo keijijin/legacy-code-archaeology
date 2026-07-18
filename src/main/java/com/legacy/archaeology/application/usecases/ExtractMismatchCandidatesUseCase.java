@@ -12,6 +12,7 @@ import com.legacy.archaeology.infrastructure.llm.LlmCandidateResponse;
 import com.legacy.archaeology.infrastructure.prompt.PromptLoader;
 import com.legacy.archaeology.shared.audit.AuditLogger;
 import com.legacy.archaeology.shared.id.IdGenerator;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -73,7 +74,9 @@ public class ExtractMismatchCandidatesUseCase {
             rule.setProjectId(projectId);
             rule.setRuleText(candidate.getText());
             rule.setConfidenceLevel(parseConfidenceLevel(candidate.getConfidenceLevel()));
-            rule.setConfidenceScore(candidate.getConfidenceScore());
+            if (candidate.getConfidenceScore() != null) {
+                rule.setConfidenceScore(BigDecimal.valueOf(candidate.getConfidenceScore()));
+            }
             rule.setReviewStatus(ReviewStatus.PENDING);
             rule.setEvidenceIds(candidate.getEvidenceIds());
             rule.setReason(candidate.getReason());
