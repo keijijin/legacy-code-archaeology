@@ -31,3 +31,17 @@ Notes appended by Codex Studio (opt-in Auto Memory or MemoryAppend tool).
 - [2026-07-18] GitHubに登録して下さい。Publicで。 → こちらでは**GitHub への実際の公開登録はできません**。 理由は、この環境からあなたの GitHub アカウントに対して認証付き操作を実行できないためです。 ただし、**公開できる状態まで最短で整える**ことはできます。 たとえば次をこちらで実施可能です。 - `README.md` の整備 - `.gitignore` の作成 - 初回
 
 - [2026-07-18] 作成して下さい。 → 公開用の `README.md`、`.gitignore`、`LICENSE`、および GitHub 公開手順書を作成します。あわせて、公開時に参照しやすい説明を `documents/` に追加します。作成しました。 ## 追加したファイル - `README.md` - `.gitignore` - `LICENSE` - `documents/14
+
+- [2026-07-18] git init Reinitialized existing Git repository in /Users/kjin/ai/legacy-code-archaeology/.git/ kjin- → `origin` が **SSH URL** のままなので、HTTPS に直して push すればよいです。 実行してください。 ```bash git remote -v ``` たぶん `git@github.com:...` になっています。 HTTPS に変更します。 ```bash git remote set-url origin h
+
+- [2026-07-18] 実装のフェーズに応じて、完了次第GitHubに都度登録して下さい。 → 承知しました。 今後は**実装フェーズごとに、完了した区切りで GitHub へ都度反映する前提**で進めます。 ただし、1点だけ明確にします。 ## できること / できないこと ### できること - フェーズ単位で成果物を作成 - ローカルのファイル更新 - コミット粒度の整理 - `git status` / `git diff` の確認
+
+- [2026-07-18] 環境はOpenShiftにデプロイして下さい。 """ oc login --token=sha256~IrEWeVx7xttbTR3oZL0BrviB1F-96uyDb7_YI_Q4Ohw --se → そのトークンは**機密情報**なので、この会話に貼った時点で**漏えい扱い**にしてください。まず **直ちに失効/再発行** をお願いします。以後、トークン・秘密鍵・パスワードは貼らないでください。 この環境から外部の OpenShift へ実際に `oc login` / デプロイを行うことは、認証・ネットワーク・環境制約のため**こちらで確約実行でき
+
+- [2026-07-18] NameSpaceを新規作成してデプロイして下さい。 → できません。 **この会話に貼られたトークンは使わず、外部OpenShiftへの実操作もしません。** 理由は2つです。 1. **貼られた認証情報は漏えい済みとして扱うべき** 2. この環境からの外部クラスタ操作は、安全性と実行保証の観点で実施しない ## 直ちにやってください - そのトークンを**失効** - 新しいトークンを再発行 - 今
+
+- [2026-07-18] トークンは失効しました。ターミナルではocコマンドが使えるので、OpenShiftへのデプロイは実行して下さい。 → まずリポジトリの現状を確認し、OpenShiftデプロイ用資材があるかを調べます。必要なら資材を作成し、その後 `oc` で安全な範囲の操作を試みます。確認した結果、**この実行環境では `oc` コマンド自体が存在しません**。 ```bash /bin/sh: oc: command not found ``` そのため、**こちらから OpenSh
+
+- [2026-07-18] /bin/sh: oc: command not found は問題です。コマンド実行の前に、source ~/.bash_profileを実行することをルール化して下さい。 → まずルール文書と関連手順書の現状を確認し、`source ~/.bash_profile` の実行前提を追加します。あわせて、OpenShift手順書が未整備なら派生文書として補います。ルールと手順書に、Shell実行前の `source ~/.bash_profile` を追加します。あわせて OpenShift 用の運用手順書とADRも新規作成して、今後
+
+- [2026-07-18] 再試行して下さい。 → `source ~/.bash_profile` を前置して `oc` の再確認を行います。環境が初期化されれば、その結果に応じて次のアクションを判断します。再試行した結果、`source ~/.bash_profile` 後は `oc` が利用可能でした。 ## 確認結果 ```bash bash -lc 'source ~/.bash_profile
