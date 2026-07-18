@@ -1,0 +1,14 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: lca-api-route
+  namespace: legacy-code-archaeology-dev
+spec:
+  to:
+    kind: Service
+    name: lca-api-service
+  port:
+    targetPort: 8080
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

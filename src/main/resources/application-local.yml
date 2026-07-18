@@ -1,0 +1,19 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/lca_db
+    username: lca_user
+    password: lca_password
+
+  neo4j:
+    uri: bolt://localhost:7687
+    authentication:
+      username: neo4j
+      password: neo4j_password
+
+logging:
+  level:
+    com.legacy.archaeology: DEBUG
+
+lca:
+  llm:
+    external-send-enabled: false

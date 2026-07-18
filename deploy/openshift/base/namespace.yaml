@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: legacy-code-archaeology-dev
+  labels:
+    app: legacy-code-archaeology
+    env: dev

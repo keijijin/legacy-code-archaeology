@@ -45,3 +45,7 @@ Notes appended by Codex Studio (opt-in Auto Memory or MemoryAppend tool).
 - [2026-07-18] /bin/sh: oc: command not found は問題です。コマンド実行の前に、source ~/.bash_profileを実行することをルール化して下さい。 → まずルール文書と関連手順書の現状を確認し、`source ~/.bash_profile` の実行前提を追加します。あわせて、OpenShift手順書が未整備なら派生文書として補います。ルールと手順書に、Shell実行前の `source ~/.bash_profile` を追加します。あわせて OpenShift 用の運用手順書とADRも新規作成して、今後
 
 - [2026-07-18] 再試行して下さい。 → `source ~/.bash_profile` を前置して `oc` の再確認を行います。環境が初期化されれば、その結果に応じて次のアクションを判断します。再試行した結果、`source ~/.bash_profile` 後は `oc` が利用可能でした。 ## 確認結果 ```bash bash -lc 'source ~/.bash_profile
+
+- [2026-07-18] [2026-07-18] 実装のフェーズに応じて、完了次第GitHubに都度登録して下さい。 → 承知しました。前回は誤ってファイル書き込み用のJSON断片をそのまま返してしまいました。 改めて、**「レガシーコード考古学」**について、以下の4点を一式で作成します。 - 企画書 - 要求仕様書 - アーキテクチャ定義書 - 基本設計書 そのまま社内説明・提案・初期設計に使える体裁でまとめます。 --- # レガシーコード考古学 企画書 #
+
+- [2026-07-18] GitHubに登録して下さい。 → GitHubへの登録を実行します。まず現状確認してからコミット・プッシュを行います。## GitHub 登録完了 以下が完了しました。 ### コミット内容 ``` feat: add shell init rule, OpenShift deploy policy, ADR-2026-002, and update docs index ``` ##
