@@ -1,0 +1,10 @@
+{
+  "packageName": "com.example.customer",
+  "className": "CustomerRegistrationService",
+  "methodNames": [
+    "canOpenAccount",
+    "registerCustomer",
+    "validateName"
+  ],
+  "methodCount": 3
+}

@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -50,6 +51,18 @@ public class GlobalExceptionHandler {
                         ErrorDto.builder()
                                 .errorCode("VALIDATION_ERROR")
                                 .message(message)
+                                .traceId(MDC.get("traceId"))
+                                .build());
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorDto> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+        log.warn("リクエストボディ解析エラー: {}", ex.getMostSpecificCause().getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(
+                        ErrorDto.builder()
+                                .errorCode("VALIDATION_ERROR")
+                                .message("リクエストボディの形式が不正です")
                                 .traceId(MDC.get("traceId"))
                                 .build());
     }

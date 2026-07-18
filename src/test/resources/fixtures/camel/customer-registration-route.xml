@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<camelContext xmlns="http://camel.apache.org/schema/spring">
+  <route id="customer-registration-route">
+    <from uri="jms:queue:customer.in"/>
+    <bean ref="customerRegistrationService"/>
+    <to uri="jdbc:customerDS"/>
+    <to uri="http://notification-service/api/send"/>
+    <log message="customer registered"/>
+  </route>
+</camelContext>

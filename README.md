@@ -110,6 +110,19 @@ AI出力は候補であり、人間レビューによってのみ確定します
 - 変更影響分析
 - OpenShift移行課題抽出
 
+## MVPデモ（最短）
+
+```bash
+source ~/.bash_profile
+./scripts/local/start.sh
+./gradlew bootRun
+# 別ターミナル
+curl -s http://localhost:8080/api/health
+open http://localhost:8080/review/
+```
+
+詳細は `documents/19_デモシナリオ_MVP_レガシーコード考古学.md` を参照。
+
 ## ライセンス
 
 このリポジトリは `MIT License` を採用しています。詳細は `LICENSE` を参照してください。

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>業務ルールレビュー | レガシーコード考古学</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --ng: #ef4444;
+      --hold: #f59e0b;
+    }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, sans-serif;
+      background: linear-gradient(180deg, #0f172a, #111827);
+      color: var(--text);
+    }
+    header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    h1 { font-size: 1.1rem; margin: 0; }
+    .muted { color: var(--muted); font-size: 0.9rem; }
+    main { padding: 1.5rem; max-width: 1100px; margin: 0 auto; }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; }
+    input, button, select {
+      background: #0b1220;
+      color: var(--text);
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      padding: 0.6rem 0.8rem;
+    }
+    button {
+      background: #0369a1;
+      border-color: #0284c7;
+      cursor: pointer;
+    }
+    button.secondary { background: #334155; border-color: #475569; }
+    button.ok { background: #166534; border-color: #16a34a; }
+    button.ng { background: #7f1d1d; border-color: #dc2626; }
+    button.hold { background: #78350f; border-color: #d97706; }
+    .card {
+      background: var(--card);
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+    }
+    .meta { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      background: #0b1220;
+      border: 1px solid #334155;
+    }
+    pre {
+      white-space: pre-wrap;
+      background: #0b1220;
+      padding: 0.75rem;
+      border-radius: 0.5rem;
+      border: 1px solid #334155;
+    }
+    #status { min-height: 1.25rem; color: var(--accent); margin-bottom: 1rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>レガシーコード考古学 — 業務ルールレビュー</h1>
+    <span class="muted">Evidence First / Human in the Loop</span>
+  </header>
+  <main>
+    <div class="row">
+      <input id="projectId" placeholder="Project ID (例: PRJ-XXXXXXXX)" size="36" />
+      <button onclick="loadRules()">候補を読み込む</button>
+      <a class="muted" href="/api/health" target="_blank">API Health</a>
+    </div>
+    <div id="status"></div>
+    <div id="list"></div>
+  </main>
+  <script>
+    const statusEl = document.getElementById('status');
+    const listEl = document.getElementById('list');
+
+    async function loadRules() {
+      const projectId = document.getElementById('projectId').value.trim();
+      if (!projectId) {
+        statusEl.textContent = 'Project ID を入力してください';
+        return;
+      }
+      statusEl.textContent = '読み込み中...';
+      listEl.innerHTML = '';
+      try {
+        const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/rules`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const rules = await res.json();
+        statusEl.textContent = `${rules.length} 件の候補`;
+        rules.forEach(renderRule);
+      } catch (e) {
+        statusEl.textContent = `読み込み失敗: ${e.message}`;
+      }
+    }
+
+    function renderRule(rule) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      const conf = rule.confidence || {};
+      card.innerHTML = `
+        <div class="meta">
+          <span class="badge">${rule.businessRuleId || ''}</span>
+          <span class="badge">review=${rule.reviewStatus || ''}</span>
+          <span class="badge">confidence=${conf.level || ''} ${conf.score ?? ''}</span>
+          <span class="badge">model=${rule.modelName || '-'}</span>
+          <span class="badge">prompt=${rule.promptVersion || '-'}</span>
+        </div>
+        <pre>${escapeHtml(rule.ruleText || '')}</pre>
+        <div class="muted">reason: ${escapeHtml(rule.reason || '')}</div>
+        <div class="muted">evidenceIds: ${(rule.evidenceIds || []).join(', ')}</div>
+        <div class="row" style="margin-top:0.75rem">
+          <button class="ok" onclick="review('${rule.businessRuleId}', 'Approved')">承認</button>
+          <button class="ng" onclick="review('${rule.businessRuleId}', 'Rejected')">却下</button>
+          <button class="hold" onclick="review('${rule.businessRuleId}', 'OnHold')">保留</button>
+        </div>
+      `;
+      listEl.appendChild(card);
+    }
+
+    async function review(ruleId, action) {
+      const projectId = document.getElementById('projectId').value.trim();
+      const comment = prompt(`${action} のコメント（任意）`, '') || '';
+      try {
+        const res = await fetch(
+          `/api/projects/${encodeURIComponent(projectId)}/rules/${encodeURIComponent(ruleId)}/review`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action, comment })
+          }
+        );
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status}: ${body}`);
+        }
+        statusEl.textContent = `${ruleId} を ${action} しました`;
+        await loadRules();
+      } catch (e) {
+        statusEl.textContent = `レビュー失敗: ${e.message}`;
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;');
+    }
+  </script>
+</body>
+</html>

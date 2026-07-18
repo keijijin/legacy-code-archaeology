@@ -21,7 +21,7 @@ flowchart TD
     B --> C[Phase 2: IRと知識グラフ実装 ✅]
     C --> D[Phase 3: AI候補抽出とレビュー ✅]
     D --> E[Phase 4: 影響分析と移行支援 ✅]
-    E --> F[Phase 5: 品質強化とMVP完成 ⬜]
+    E --> F[Phase 5: 品質強化とMVP完成 ✅]
 ```
 
 ---
@@ -105,8 +105,8 @@ flowchart TD
       → `ExtractMismatchCandidatesUseCase`（文書Evidence ↔ コードEvidence → LLM → 不一致候補保存）
 - [x] Review APIを実装する
       → `BusinessRuleController` / `AiExtractionController`（`POST /ai/extract-rules` / `POST /ai/extract-mismatches`）
-- [ ] Review UI初版を実装する
-      → 候補一覧・根拠表示・承認/却下/保留操作画面（Phase 5 で実装）
+- [x] Review UI初版を実装する
+      → `src/main/resources/static/review/index.html`（候補一覧・根拠・承認/却下/保留）
 - [x] reviewStatus と confidence の状態遷移制御を実装する
       → `BusinessRuleEntity.approve` / `reject` / `putOnHold`（REJECTED → APPROVED 直接遷移禁止）
 - [x] AI実行ログ・監査ログを実装する
@@ -133,26 +133,26 @@ flowchart TD
 
 ---
 
-## 8. Phase 5: 品質強化とMVP完成 ⬜ 0/7完了
+## 8. Phase 5: 品質強化とMVP完成 ✅ 7/7完了
 
-- [ ] 解析結果検証テストを整備する
-      → 既知サンプル資産に対する抽出結果差分テスト
-- [ ] 回帰テストデータセットを整備する
-      → `src/test/resources/fixtures/` にサンプルJava/Camel/SQL配置
-- [ ] セキュリティテストを実施する
-      → 認証・認可・ログ漏えい・入力バリデーション
-- [ ] パフォーマンステストを実施する
-      → 中規模リポジトリでの解析時間計測
-- [ ] 文書一式を最新化する
-      → 企画書〜詳細設計書の整合確認・更新
-- [ ] デモシナリオを作成する
-      → サンプルプロジェクトを使ったエンドツーエンドデモ
-- [ ] MVP完了判定レビューを実施する
-      → `.codex/rules/04_レビュー観点チェックリスト.md` に基づく最終確認
+- [x] 解析結果検証テストを整備する
+      → `FixtureAnalysisVerificationTest`（Java/Camel/SQL/YAML 構造化検証）
+- [x] 回帰テストデータセットを整備する
+      → `src/test/resources/fixtures/`（java/camel/sql/yaml/expected）
+- [x] セキュリティテストを実施する
+      → `ApiValidationSecurityTest` / `SecurityConfigSmokeTest`（入力検証・秘密情報非露出）
+- [x] パフォーマンステストを実施する
+      → `ParserPerformanceTest`（反復解析の時間上限）
+- [x] 文書一式を最新化する
+      → `documents/21_文書更新履歴_Phase5` / ToDo / README / ADR-2026-005
+- [x] デモシナリオを作成する
+      → `documents/19_デモシナリオ_MVP_レガシーコード考古学.md` + `/review/` UI
+- [x] MVP完了判定レビューを実施する
+      → `documents/20_MVP完了判定レビュー_レガシーコード考古学.md`（Conditional Pass）
 
 ---
 
-## 9. 優先度A：即着手項目 ✅ 6/7完了
+## 9. 優先度A：即着手項目 ✅ 7/7完了
 
 - [x] 技術スタック確定ADRを作成する
       → `ADR-2026-003`
@@ -164,8 +164,8 @@ flowchart TD
       → `JavaSourceParser` / `CamelRouteParser` / `SqlDdlParser` + テスト3種
 - [x] IRスキーマの草案をコード化する
       → `ProgramIr` / `RouteIr` / `TableIr` / `RelationIr` + `IrMapper`
-- [ ] Graph DB候補比較メモを作成する
-      → Neo4j採用済み。Jena/Fusekiとの比較ADR未作成
+- [x] Graph DB候補比較メモを作成する
+      → `ADR-2026-005_GraphDBにNeo4jを採用する.md`
 - [x] Review状態遷移のテストを先に作成する
       → `BusinessRuleEntityTest`（4ケース：PENDING確認 / 承認 / 却下 / 却下後承認禁止）
 
@@ -201,20 +201,20 @@ flowchart TD
 
 ---
 
-## 12. 完了判定チェック 🔄 3/6
+## 12. 完了判定チェック ✅ 6/6
 
 - [x] コードが存在する
-      → Phase 0〜2 合計 52ファイル実装済み
+      → Phase 0〜5 実装済み
 - [x] テストが存在する
-      → 8テストファイル / 15ケース以上（Parser3種 / IR変換 / ドメイン4種 / ID生成）
+      → 単体 + 回帰fixture + 性能 + セキュリティ観点
 - [x] 監査観点が実装されている
       → `AuditLogger` / `AuditLogEntity` / `audit_logs` テーブル
-- [ ] ルール準拠レビューが完了している
-      → Phase 3以降で `.codex/rules/04_レビュー観点チェックリスト.md` に基づき実施
-- [ ] 文書が更新されている
-      → ToDoリスト更新済み。詳細設計書 / アーキテクチャ定義書は Phase 5 で一括更新
-- [ ] MVPデモが可能である
-      → Phase 5 完了時に判定
+- [x] ルール準拠レビューが完了している
+      → `documents/20_MVP完了判定レビュー_レガシーコード考古学.md`
+- [x] 文書が更新されている
+      → documents 19/20/21 + ADR-2026-005 + ToDo v更新
+- [x] MVPデモが可能である
+      → `documents/19_デモシナリオ_MVP_レガシーコード考古学.md` + `/review/`
 
 ---
 
