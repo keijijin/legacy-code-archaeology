@@ -1,8 +1,16 @@
 version: '3.8'
 
+# ローカル開発用 Podman Compose 設定
+# 実行方法:
+#   podman compose up -d
+#   podman compose down
+#   podman compose logs -f
+#
+# 注意: Docker ではなく Podman を使用すること（ADR-2026-004）
+
 services:
   postgres:
-    image: postgres:16
+    image: docker.io/library/postgres:16
     container_name: lca-postgres
     environment:
       POSTGRES_DB: lca_db
@@ -19,7 +27,7 @@ services:
       retries: 5
 
   neo4j:
-    image: neo4j:5
+    image: docker.io/library/neo4j:5
     container_name: lca-neo4j
     environment:
       NEO4J_AUTH: neo4j/neo4j_password

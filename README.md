@@ -114,9 +114,31 @@ AI出力は候補であり、人間レビューによってのみ確定します
 
 このリポジトリは `MIT License` を採用しています。詳細は `LICENSE` を参照してください。
 
+## ローカル開発環境の起動
+
+**コンテナ実行には Podman を使用します（Docker は使用しません）。**
+
+```bash
+source ~/.bash_profile
+
+# DB・Graph DBをローカル起動
+podman compose -f podman-compose.yml up -d
+
+# または
+./scripts/local/start.sh
+
+# アプリイメージビルド
+./scripts/local/build.sh
+
+# 停止
+./scripts/local/stop.sh
+```
+
+詳細は `documents/16_OpenShiftデプロイ方針_レガシーコード考古学.md` を参照。
+
 ## 注意
 
-本リポジトリは現時点では、主に**企画・設計・ルール定義の資産**を含みます。実装コードは今後追加される想定です。
+本リポジトリは現時点では、主に**企画・設計・ルール定義・Phase 0〜3 の実装資産**を含みます。
 
 ## 公開・運用メモ
 

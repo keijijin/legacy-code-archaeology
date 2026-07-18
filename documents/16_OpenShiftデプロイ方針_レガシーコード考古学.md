@@ -12,7 +12,36 @@
 
 ---
 
-## 2. 基本方針
+## 2. コンテナ実行環境の方針
+
+| 環境 | 使用ツール | 備考 |
+|---|---|---|
+| ローカル開発 | **Podman** | Docker 使用禁止（ADR-2026-004）|
+| ローカルコンテナ起動 | `podman compose` | `podman-compose.yml` を使用 |
+| イメージビルド | `podman build` | `docker build` は使用しない |
+| 本番デプロイ | `oc apply` | OpenShift への配備 |
+
+### ローカル起動手順
+
+```bash
+source ~/.bash_profile
+
+# 起動
+podman compose -f podman-compose.yml up -d
+
+# または
+./scripts/local/start.sh
+
+# 停止
+./scripts/local/stop.sh
+
+# イメージビルド
+./scripts/local/build.sh
+```
+
+---
+
+## 3. 基本方針
 
 - OpenShift は本システムの標準実行基盤候補とする
 - API、Worker、Web UI、DB、Graph DB、Vector DB は責務ごとに分離する
@@ -31,7 +60,7 @@ flowchart TD
 
 ---
 
-## 3. Shell実行ルール
+## 4. Shell実行ルール
 
 OpenShift 関連コマンドを実行する前に、以下を先に実行すること。
 
@@ -58,7 +87,7 @@ oc login --token=<TOKEN> --server=<SERVER>
 
 ---
 
-## 4. Namespace作成手順例
+## 5. Namespace作成手順例
 
 ```bash
 source ~/.bash_profile
@@ -69,7 +98,7 @@ oc new-project legacy-code-archaeology-dev
 
 ---
 
-## 5. デプロイ手順例
+## 6. デプロイ手順例
 
 ```bash
 source ~/.bash_profile
@@ -80,7 +109,7 @@ oc apply -f deploy/openshift/base/
 
 ---
 
-## 6. セキュリティ注意事項
+## 7. セキュリティ注意事項
 
 - Token はチャット、Git、文書に保存しない
 - Secret は template のみをリポジトリに保存する
@@ -89,7 +118,7 @@ oc apply -f deploy/openshift/base/
 
 ---
 
-## 7. 今後の整備対象
+## 8. 今後の整備対象
 
 - `deploy/openshift/` 配下の manifest 一式
 - API / Worker / Web UI の Deployment 定義
