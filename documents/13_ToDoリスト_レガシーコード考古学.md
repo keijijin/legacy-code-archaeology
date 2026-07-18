@@ -91,26 +91,26 @@ flowchart TD
 
 ---
 
-## 6. Phase 3: AI候補抽出とレビュー 🔄 3/9完了
+## 6. Phase 3: AI候補抽出とレビュー ✅ 8/9完了
 
-- [ ] AI出力JSONスキーマを確定する
-      → `candidateType` / `text` / `confidenceLevel` / `confidenceScore` / `evidenceIds` / `reason` / `reviewStatus` / `modelName` / `promptVersion` を確定する
-- [ ] プロンプト管理方式を実装する
-      → `prompts/` ディレクトリ + 版番号管理 + 実行時保存
-- [ ] LLM呼び出しアダプタを実装する
-      → `Spring AI` 経由 / 外部送信ON/OFF制御 / 閉域LLM切替対応
-- [ ] 業務ルール候補抽出UseCaseを実装する
-      → コンテキスト化 → LLM投入 → 構造化JSON受領 → Evidence紐付け → `BusinessRuleEntity` 保存
-- [ ] 設計書と実装の不一致候補抽出UseCaseを実装する
-      → 文書解析結果 ↔ IR比較 → 不一致候補生成
+- [x] AI出力JSONスキーマを確定する
+      → `LlmCandidateResponse`（candidateType / text / confidenceLevel / confidenceScore / evidenceIds / reason / reviewStatus / modelName / promptVersion）
+- [x] プロンプト管理方式を実装する
+      → `PromptLoader`（`prompts/v1.0.0/` ディレクトリ + 版番号管理）/ `business-rule-system.txt` / `mismatch-system.txt`
+- [x] LLM呼び出しアダプタを実装する
+      → `LlmAdapter`（Spring AI / 外部送信ON/OFF制御 / 不正レスポンス自動破棄 / スタブ対応）
+- [x] 業務ルール候補抽出UseCaseを実装する
+      → `ExtractBusinessRuleCandidatesUseCase`（Evidence文脈化 → LLM → 構造化JSON → BusinessRule保存）
+- [x] 設計書と実装の不一致候補抽出UseCaseを実装する
+      → `ExtractMismatchCandidatesUseCase`（文書Evidence ↔ コードEvidence → LLM → 不一致候補保存）
 - [x] Review APIを実装する
-      → `BusinessRuleController`（`GET /rules` / `POST /rules/{id}/review`）/ `ReviewBusinessRuleUseCase`
+      → `BusinessRuleController` / `AiExtractionController`（`POST /ai/extract-rules` / `POST /ai/extract-mismatches`）
 - [ ] Review UI初版を実装する
-      → 候補一覧・根拠表示・承認/却下/保留操作画面
+      → 候補一覧・根拠表示・承認/却下/保留操作画面（Phase 5 で実装）
 - [x] reviewStatus と confidence の状態遷移制御を実装する
       → `BusinessRuleEntity.approve` / `reject` / `putOnHold`（REJECTED → APPROVED 直接遷移禁止）
 - [x] AI実行ログ・監査ログを実装する
-      → `AuditLogger` / `AuditLogEntity` / `audit_logs` テーブル
+      → `AuditLogger` / `AuditLogEntity` / 監査イベント: BUSINESS_RULE_CANDIDATES_EXTRACTED / MISMATCH_CANDIDATES_EXTRACTED / BUSINESS_RULE_REVIEWED
 
 ---
 
@@ -177,8 +177,8 @@ flowchart TD
       → Apache PDFBox + CommonMark 利用想定
 - [x] EvidenceEntityの保存方式を実装する
       → `EvidenceEntity` / `EvidenceRepository` / `business_rule_evidence_links` テーブル
-- [ ] AIプロンプト版管理を実装する
-      → `prompts/v1.0.0/` ディレクトリ + `LcaPromptVersion` 定数管理
+- [x] AIプロンプト版管理を実装する
+      → `PromptLoader` / `prompts/v1.0.0/business-rule-system.txt` / `prompts/v1.0.0/mismatch-system.txt`
 - [ ] Graph探索APIを実装する
       → `GET /api/projects/{id}/graph` エンドポイント
 - [ ] 影響分析UIを実装する
