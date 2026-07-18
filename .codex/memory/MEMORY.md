@@ -53,3 +53,5 @@ Notes appended by Codex Studio (opt-in Auto Memory or MemoryAppend tool).
 - [2026-07-18] Phase 0から実装を開始して下さい。 → Phase 0 を開始します。ToDoリストに従い、開発基盤を一気に整備します。Phase 0 の全タスクを一気に実装します。技術スタックはJava/Spring Bootを中心に、ADR確定→ディレクトリ初期化→ビルド設定→CI→環境変数管理→コード雛形の順で進めます。最後に GitHub へ登録します。## Phase 0 完了・GitHub 登録済み
 
 - [2026-07-18] oc projectsを実行して。 → 実行します。## 実行結果 OpenShift クラスタへの接続が確認できました。 ### 現在の状態 - **接続先：** `https://api.cluster-9nq5p.dyn.redhatworkshops.io:6443` - **現在のプロジェクト：** `default` - **アクセス可能なプロジェクト：** 多数（`keycloa
+
+- [2026-07-18] 進めて下さい。 → Phase 1 を開始します。Project / Asset / Job の REST API、Java/Camel/SQL Parser PoC、非同期ジョブ基盤を実装し、GitHubへ登録後 OpenShift へデプロイします。## Phase 1 完了 ✅ / GitHub 登録済み --- ### 実装・登録した内容 | カテゴリ | 実装内
