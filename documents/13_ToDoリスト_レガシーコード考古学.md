@@ -19,8 +19,8 @@
 flowchart TD
     A[Phase 0: 開発基盤準備 ✅] --> B[Phase 1: 取込と解析の骨格実装 ✅]
     B --> C[Phase 2: IRと知識グラフ実装 ✅]
-    C --> D[Phase 3: AI候補抽出とレビュー 🔄]
-    D --> E[Phase 4: 影響分析と移行支援 ⬜]
+    C --> D[Phase 3: AI候補抽出とレビュー ✅]
+    D --> E[Phase 4: 影響分析と移行支援 ✅]
     E --> F[Phase 5: 品質強化とMVP完成 ⬜]
 ```
 
@@ -114,22 +114,22 @@ flowchart TD
 
 ---
 
-## 7. Phase 4: 影響分析と移行支援 ⬜ 0/7完了
+## 7. Phase 4: 影響分析と移行支援 ✅ 7/7完了
 
-- [ ] 影響分析クエリを設計する
-      → Neo4j Cypher / 多段依存トラバーサル / AFFECTS リレーション
-- [ ] DBカラム変更影響分析を実装する
-      → Column ノード起点のグラフ探索
-- [ ] API変更影響分析を実装する
-      → Endpoint ノード起点のグラフ探索
-- [ ] Route変更影響分析を実装する
-      → Route ノード起点のグラフ探索
-- [ ] 関連テスト抽出を実装する
-      → `VERIFIED_BY` エッジを辿るテストケース抽出
-- [ ] OpenShift移行課題抽出ロジックを実装する
-      → 技術負債・依存関係・設定値から移行障壁候補を生成
-- [ ] モダナイゼーション候補生成UseCaseを実装する
-      → 維持 / 廃止 / 再設計 / API化 / イベント化候補の提示
+- [x] 影響分析クエリを設計する
+      → `documents/18_影響分析クエリ設計_レガシーコード考古学.md` / `ImpactGraphQueryService`
+- [x] DBカラム変更影響分析を実装する
+      → `AnalyzeImpactUseCase` + targetType=COLUMN/TABLE
+- [x] API変更影響分析を実装する
+      → targetType=ENDPOINT/API
+- [x] Route変更影響分析を実装する
+      → targetType=ROUTE
+- [x] 関連テスト抽出を実装する
+      → `findRelatedTests`（VERIFIED_BY）/ `GET /impact/tests`
+- [x] OpenShift移行課題抽出ロジックを実装する
+      → `ExtractOpenShiftMigrationIssuesUseCase` / `GET /openshift-migration-issues`
+- [x] モダナイゼーション候補生成UseCaseを実装する
+      → `GenerateModernizationCandidatesUseCase` / `GET /modernization-plan`
 
 ---
 
@@ -179,10 +179,10 @@ flowchart TD
       → `EvidenceEntity` / `EvidenceRepository` / `business_rule_evidence_links` テーブル
 - [x] AIプロンプト版管理を実装する
       → `PromptLoader` / `prompts/v1.0.0/business-rule-system.txt` / `prompts/v1.0.0/mismatch-system.txt`
-- [ ] Graph探索APIを実装する
-      → `GET /api/projects/{id}/graph` エンドポイント
+- [x] Graph探索APIを実装する
+      → `POST /api/projects/{id}/impact`（影響グラフ探索）
 - [ ] 影響分析UIを実装する
-      → Phase 4 完了後に着手
+      → Phase 5 で実装
 
 ---
 

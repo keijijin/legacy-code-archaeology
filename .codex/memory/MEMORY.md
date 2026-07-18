@@ -67,3 +67,5 @@ Notes appended by Codex Studio (opt-in Auto Memory or MemoryAppend tool).
 - [2026-07-18] - [2026-07-18] ローカルコンテナ実行はPodmanを使用する（Docker禁止）。`docker-compose.yml`を廃止し`podman-compose.yml`を正式設定とする。ADR-2026-004で規定済み。
 
 - [2026-07-18] ローカルでのコンテナ化は、dockerではなく、podmanを使って下さい。これはルールです。 → 承知しました。ルールとして規定し、関連ファイルをすべて更新します。以下の対応を一括で行います。 1. ルール文書にPodman優先を追記 2. ADR作成 3. `docker-compose.yml` → `podman-compose.yml` へ移行 4. `scripts/` にPodman用スクリプト追加 5. `documents/16_Open
+
+- [2026-07-18] 続けて。 → 大丈夫ではありません。OpenShift の SCC（Security Context Constraint）違反で Pod が落ちています。現状を確認し、restricted 準拠のマニフェストに直して再デプロイします。マニフェストの中身と API のクラッシュ理由を確認します。原因は3つです。`fsGroup: 26` の SCC 違反、PostgreS
