@@ -1,13 +1,13 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: lca-api-route
+  name: lca-ui-route
   namespace: legacy-code-archaeology-dev
   labels:
     app: lca-api
-    tier: api
+    tier: ui
   annotations:
-    description: "API and embedded Web UI route"
+    description: "Web UI entry route for portal/review/impact"
 spec:
   to:
     kind: Service

@@ -78,6 +78,11 @@
   <header>
     <h1>レガシーコード考古学 — 業務ルールレビュー</h1>
     <span class="muted">Evidence First / Human in the Loop</span>
+    <span class="muted">
+      <a href="/" style="color:#38bdf8;text-decoration:none;margin-right:.6rem;">Portal</a>
+      <a href="/impact/" style="color:#38bdf8;text-decoration:none;margin-right:.6rem;">Impact</a>
+      <a href="/api/health" style="color:#38bdf8;text-decoration:none;" target="_blank">Health</a>
+    </span>
   </header>
   <main>
     <div class="row">
@@ -91,6 +96,10 @@
   <script>
     const statusEl = document.getElementById('status');
     const listEl = document.getElementById('list');
+    const params = new URLSearchParams(location.search);
+    if (params.get('projectId')) {
+      document.getElementById('projectId').value = params.get('projectId');
+    }
 
     async function loadRules() {
       const projectId = document.getElementById('projectId').value.trim();

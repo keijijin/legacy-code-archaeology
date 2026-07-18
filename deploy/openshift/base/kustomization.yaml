@@ -11,3 +11,4 @@ resources:
   - api-deployment.yaml
   - api-service.yaml
   - api-route.yaml
+  - ui-route.yaml

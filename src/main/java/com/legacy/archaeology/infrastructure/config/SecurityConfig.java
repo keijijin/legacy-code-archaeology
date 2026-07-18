@@ -23,10 +23,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(
                         auth ->
                                 auth.requestMatchers(
+                                                "/",
+                                                "/index.html",
+                                                "/review/**",
+                                                "/impact/**",
                                                 "/api/health",
                                                 "/actuator/health",
                                                 "/actuator/info",
-                                                "/review/**",
                                                 "/error")
                                         .permitAll()
                                         .anyRequest()

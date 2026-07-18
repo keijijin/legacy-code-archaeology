@@ -3,10 +3,13 @@ kind: Service
 metadata:
   name: lca-api-service
   namespace: legacy-code-archaeology-dev
+  labels:
+    app: lca-api
 spec:
   selector:
     app: lca-api
   ports:
-    - protocol: TCP
+    - name: http
+      protocol: TCP
       port: 80
-      targetPort: 8080
+      targetPort: http

@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>レガシーコード考古学 | Portal</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #111827;
+      --panel: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --ok: #22c55e;
+      --warn: #f59e0b;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top right, rgba(56,189,248,0.12), transparent 28%),
+        linear-gradient(180deg, #0b1220 0%, #111827 100%);
+      min-height: 100vh;
+    }
+    header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    h1 { margin: 0; font-size: 1.2rem; }
+    .muted { color: var(--muted); }
+    main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    .hero, .card, .panel {
+      background: rgba(30, 41, 59, 0.9);
+      border: 1px solid var(--border);
+      border-radius: 1rem;
+      padding: 1.25rem;
+    }
+    .hero { margin-bottom: 1rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin: 1rem 0 1.5rem;
+    }
+    a.card {
+      color: inherit;
+      text-decoration: none;
+      transition: transform .15s ease, border-color .15s ease;
+      display: block;
+    }
+    a.card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+    }
+    .badge {
+      display: inline-block;
+      padding: .15rem .55rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: #0b1220;
+      font-size: .8rem;
+      color: var(--muted);
+    }
+    .badge.ok { color: var(--ok); border-color: rgba(34,197,94,.4); }
+    .badge.warn { color: var(--warn); border-color: rgba(245,158,11,.4); }
+    .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
+    input, button, select, textarea {
+      background: #0b1220;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: .6rem;
+      padding: .7rem .85rem;
+    }
+    input { min-width: 280px; }
+    button {
+      background: #0369a1;
+      border-color: #0284c7;
+      cursor: pointer;
+    }
+    button.secondary { background: #334155; border-color: #475569; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #0b1220;
+      border: 1px solid var(--border);
+      border-radius: .75rem;
+      padding: 1rem;
+      min-height: 180px;
+    }
+    .status { min-height: 1.4rem; color: var(--accent); margin: .5rem 0 1rem; }
+    .nav a {
+      color: var(--accent);
+      text-decoration: none;
+      margin-right: .8rem;
+    }
+    h2 { margin-top: 0; font-size: 1rem; }
+    .section-title { margin: 1.5rem 0 .75rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>レガシーコード考古学</h1>
+      <div class="muted">Evidence First / IR / Knowledge Graph / Human in the Loop</div>
+    </div>
+    <div class="nav">
+      <a href="/">Portal</a>
+      <a href="/review/">Review UI</a>
+      <a href="/impact/">Impact UI</a>
+      <a href="/api/health" target="_blank">API Health</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <div class="badge" id="envBadge">OpenShift / Local</div>
+          <h2 style="margin:.6rem 0 .3rem; font-size:1.3rem;">MVP Portal</h2>
+          <div class="muted">API と一体で配信される Web UI です。独立 SPA ではなく、同一 Route 上で提供します。</div>
+        </div>
+        <div class="row">
+          <span class="badge" id="healthBadge">health: checking...</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid">
+      <a class="card" href="/review/">
+        <div class="badge">UI</div>
+        <h2>業務ルールレビュー</h2>
+        <div class="muted">候補一覧・根拠確認・承認 / 却下 / 保留</div>
+      </a>
+      <a class="card" href="/impact/">
+        <div class="badge">UI</div>
+        <h2>影響分析コンソール</h2>
+        <div class="muted">COLUMN / ROUTE / PROGRAM の影響探索</div>
+      </a>
+      <a class="card" href="/api/health" target="_blank">
+        <div class="badge">API</div>
+        <h2>Health</h2>
+        <div class="muted">`/api/health` と actuator 状態確認</div>
+      </a>
+      <a class="card" href="#quick">
+        <div class="badge">API</div>
+        <h2>クイック操作</h2>
+        <div class="muted">プロジェクト作成・移行課題・近代化計画</div>
+      </a>
+    </div>
+
+    <h3 class="section-title">クイック操作</h3>
+    <section class="panel" id="quick">
+      <div class="row">
+        <input id="projectId" placeholder="Project ID（既存 or 作成後）" />
+        <button onclick="createProject()">プロジェクト作成</button>
+        <button class="secondary" onclick="loadProjects()">一覧取得</button>
+        <button class="secondary" onclick="loadMigration()">移行課題</button>
+        <button class="secondary" onclick="loadModernization()">近代化計画</button>
+        <button class="secondary" onclick="goReview()">Review UIへ</button>
+        <button class="secondary" onclick="goImpact()">Impact UIへ</button>
+      </div>
+      <div class="status" id="status"></div>
+      <pre id="output">ここに API 応答が表示されます。</pre>
+    </section>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const outputEl = document.getElementById('output');
+    const healthBadge = document.getElementById('healthBadge');
+
+    function setStatus(msg) { statusEl.textContent = msg || ''; }
+    function setOutput(data) {
+      outputEl.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    }
+    function projectId() {
+      return document.getElementById('projectId').value.trim();
+    }
+    function goReview() {
+      const id = projectId();
+      location.href = id ? `/review/?projectId=${encodeURIComponent(id)}` : '/review/';
+    }
+    function goImpact() {
+      const id = projectId();
+      location.href = id ? `/impact/?projectId=${encodeURIComponent(id)}` : '/impact/';
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch('/api/health');
+        const body = await res.json();
+        healthBadge.textContent = `health: ${body.status || res.status}`;
+        healthBadge.className = 'badge ok';
+      } catch (e) {
+        healthBadge.textContent = 'health: DOWN';
+        healthBadge.className = 'badge warn';
+      }
+    }
+
+    async function createProject() {
+      setStatus('プロジェクト作成中...');
+      try {
+        const res = await fetch('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: 'openshift-demo-' + Date.now(),
+            description: 'OpenShift portal demo project'
+          })
+        });
+        const body = await res.json();
+        if (!res.ok) throw new Error(JSON.stringify(body));
+        document.getElementById('projectId').value = body.projectId || '';
+        setStatus(`作成完了: ${body.projectId}`);
+        setOutput(body);
+      } catch (e) {
+        setStatus('作成失敗');
+        setOutput(String(e.message || e));
+      }
+    }
+
+    async function loadProjects() {
+      setStatus('プロジェクト一覧取得中...');
+      try {
+        const res = await fetch('/api/projects');
+        const body = await res.json();
+        if (!res.ok) throw new Error(JSON.stringify(body));
+        setStatus(`${Array.isArray(body) ? body.length : 0} 件`);
+        setOutput(body);
+      } catch (e) {
+        setStatus('取得失敗');
+        setOutput(String(e.message || e));
+      }
+    }
+
+    async function loadMigration() {
+      const id = projectId();
+      if (!id) return setStatus('Project ID を入力してください');
+      setStatus('OpenShift移行課題を取得中...');
+      try {
+        const res = await fetch(`/api/projects/${encodeURIComponent(id)}/openshift-migration-issues`);
+        const body = await res.json();
+        if (!res.ok) throw new Error(JSON.stringify(body));
+        setStatus(`課題 ${body.issueCount ?? 0} 件`);
+        setOutput(body);
+      } catch (e) {
+        setStatus('取得失敗');
+        setOutput(String(e.message || e));
+      }
+    }
+
+    async function loadModernization() {
+      const id = projectId();
+      if (!id) return setStatus('Project ID を入力してください');
+      setStatus('モダナイゼーション計画を取得中...');
+      try {
+        const res = await fetch(`/api/projects/${encodeURIComponent(id)}/modernization-plan`);
+        const body = await res.json();
+        if (!res.ok) throw new Error(JSON.stringify(body));
+        setStatus(`候補 ${body.candidateCount ?? 0} 件`);
+        setOutput(body);
+      } catch (e) {
+        setStatus('取得失敗');
+        setOutput(String(e.message || e));
+      }
+    }
+
+    checkHealth();
+  </script>
+</body>
+</html>
