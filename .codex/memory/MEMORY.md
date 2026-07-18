@@ -49,3 +49,7 @@ Notes appended by Codex Studio (opt-in Auto Memory or MemoryAppend tool).
 - [2026-07-18] [2026-07-18] 実装のフェーズに応じて、完了次第GitHubに都度登録して下さい。 → 承知しました。前回は誤ってファイル書き込み用のJSON断片をそのまま返してしまいました。 改めて、**「レガシーコード考古学」**について、以下の4点を一式で作成します。 - 企画書 - 要求仕様書 - アーキテクチャ定義書 - 基本設計書 そのまま社内説明・提案・初期設計に使える体裁でまとめます。 --- # レガシーコード考古学 企画書 #
 
 - [2026-07-18] GitHubに登録して下さい。 → GitHubへの登録を実行します。まず現状確認してからコミット・プッシュを行います。## GitHub 登録完了 以下が完了しました。 ### コミット内容 ``` feat: add shell init rule, OpenShift deploy policy, ADR-2026-002, and update docs index ``` ##
+
+- [2026-07-18] Phase 0から実装を開始して下さい。 → Phase 0 を開始します。ToDoリストに従い、開発基盤を一気に整備します。Phase 0 の全タスクを一気に実装します。技術スタックはJava/Spring Bootを中心に、ADR確定→ディレクトリ初期化→ビルド設定→CI→環境変数管理→コード雛形の順で進めます。最後に GitHub へ登録します。## Phase 0 完了・GitHub 登録済み
+
+- [2026-07-18] oc projectsを実行して。 → 実行します。## 実行結果 OpenShift クラスタへの接続が確認できました。 ### 現在の状態 - **接続先：** `https://api.cluster-9nq5p.dyn.redhatworkshops.io:6443` - **現在のプロジェクト：** `default` - **アクセス可能なプロジェクト：** 多数（`keycloa
