@@ -9,6 +9,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /** グローバル例外ハンドラ。業務エラーとシステムエラーを分離する。 */
 @RestControllerAdvice
@@ -63,6 +64,18 @@ public class GlobalExceptionHandler {
                         ErrorDto.builder()
                                 .errorCode("VALIDATION_ERROR")
                                 .message("リクエストボディの形式が不正です")
+                                .traceId(MDC.get("traceId"))
+                                .build());
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorDto> handleNotFound(NoResourceFoundException ex) {
+        log.warn("リソース未検出: {}", ex.getResourcePath());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(
+                        ErrorDto.builder()
+                                .errorCode("NOT_FOUND")
+                                .message("指定されたリソースが見つかりません")
                                 .traceId(MDC.get("traceId"))
                                 .build());
     }

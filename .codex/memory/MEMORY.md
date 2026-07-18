@@ -71,3 +71,5 @@ Notes appended by Codex Studio (opt-in Auto Memory or MemoryAppend tool).
 - [2026-07-18] 続けて。 → 大丈夫ではありません。OpenShift の SCC（Security Context Constraint）違反で Pod が落ちています。現状を確認し、restricted 準拠のマニフェストに直して再デプロイします。マニフェストの中身と API のクラッシュ理由を確認します。原因は3つです。`fsGroup: 26` の SCC 違反、PostgreS
 
 - [2026-07-18] Phase 4（影響分析）に進めて下さい。 → Phase 4（影響分析）を開始します。現状の実装と ToDo を確認してから実装に入ります。Phase 4 の影響分析・移行支援を実装します。クエリ設計、UseCase、API、テスト、文書を一括で追加します。ToDo を更新し、テスト実行後に GitHub へ登録します。テストは成功しました。GitHub へ登録します。## Phase 4 完了 ✅ /
+
+- [2026-07-18] Phase 5 に進んで下さい。 → Phase 5（品質強化とMVP完成）を開始します。ToDoと現状を確認してから実装に入ります。Phase 5 の品質強化・fixture・セキュリティ/性能テスト・デモ/MVP判定文書を一気に実装します。失敗したセキュリティテストを確認して修正します。不正JSONを400として扱うよう例外ハンドラを修正します。全テスト成功。GitHubへ登録します。##
