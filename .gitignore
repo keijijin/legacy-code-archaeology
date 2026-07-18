@@ -52,3 +52,5 @@ reports/
 
 # Tooling
 .codex/tmp/
+.codex/.agent-env.captured
+.codex/memory/
