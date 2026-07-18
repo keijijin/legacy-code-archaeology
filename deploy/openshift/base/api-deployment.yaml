@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: lca-api
-          image: quay.io/keijijin/lca-api:latest
+          image: image-registry.openshift-image-registry.svc:5000/legacy-code-archaeology-dev/lca-api:latest
           ports:
             - containerPort: 8080
           envFrom:

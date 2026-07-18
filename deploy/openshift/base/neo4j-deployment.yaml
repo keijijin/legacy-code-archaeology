@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lca-neo4j
+  namespace: legacy-code-archaeology-dev
+  labels:
+    app: lca-neo4j
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lca-neo4j
+  template:
+    metadata:
+      labels:
+        app: lca-neo4j
+    spec:
+      containers:
+        - name: neo4j
+          image: docker.io/library/neo4j:5
+          ports:
+            - containerPort: 7474
+            - containerPort: 7687
+          env:
+            - name: NEO4J_AUTH
+              value: neo4j/neo4j_password
+          volumeMounts:
+            - name: neo4j-data
+              mountPath: /data
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 7474
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+      volumes:
+        - name: neo4j-data
+          persistentVolumeClaim:
+            claimName: lca-neo4j-pvc

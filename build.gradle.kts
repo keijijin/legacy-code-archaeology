@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     java
     id("org.springframework.boot") version "3.3.0"
@@ -19,6 +17,8 @@ configurations {
 
 repositories {
     mavenCentral()
+    maven { url = uri("https://repo.spring.io/milestone") }
+    maven { url = uri("https://repo.spring.io/snapshot") }
 }
 
 dependencies {
@@ -31,7 +31,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
 
     // Spring AI
-    implementation(platform("org.springframework.ai:spring-ai-bom:1.0.0"))
+    implementation(platform("org.springframework.ai:spring-ai-bom:1.0.0-M6"))
     implementation("org.springframework.ai:spring-ai-openai-spring-boot-starter")
 
     // Database

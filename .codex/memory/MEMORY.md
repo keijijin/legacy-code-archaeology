@@ -63,3 +63,7 @@ Notes appended by Codex Studio (opt-in Auto Memory or MemoryAppend tool).
 - [2026-07-18] Phase単位だけではなく、Phaseの中の項目単位で完了状況をマークして下さい。 → 確認してから正確に消し込みます。現在の実装状況を全ファイルで照合しました。項目単位で正確に消し込みます。完了しました。GitHub登録も完了しています。 --- ## 消し込み結果サマリ（項目単位） | フェーズ / セクション | 完了 | 残 | 進捗 | |---|---|---|---| | Phase 0：開発基盤準備 | 7 | 0 | ✅
 
 - [2026-07-18] 進めて下さい。 → Phase 3 の残タスクを実装します。LLM呼び出しアダプタ・プロンプト管理・業務ルール候補抽出・不一致候補抽出を実装し、GitHub登録・OpenShiftデプロイまで行います。GitHub の Push Protection が `.codex/.agent-env.captured` 内の OpenAI API Key を検出してブロックしました。直
+
+- [2026-07-18] - [2026-07-18] ローカルコンテナ実行はPodmanを使用する（Docker禁止）。`docker-compose.yml`を廃止し`podman-compose.yml`を正式設定とする。ADR-2026-004で規定済み。
+
+- [2026-07-18] ローカルでのコンテナ化は、dockerではなく、podmanを使って下さい。これはルールです。 → 承知しました。ルールとして規定し、関連ファイルをすべて更新します。以下の対応を一括で行います。 1. ルール文書にPodman優先を追記 2. ADR作成 3. `docker-compose.yml` → `podman-compose.yml` へ移行 4. `scripts/` にPodman用スクリプト追加 5. `documents/16_Open

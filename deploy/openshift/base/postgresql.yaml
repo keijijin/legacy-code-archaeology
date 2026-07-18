@@ -1,0 +1,85 @@
+---
+# PostgreSQL - OpenShift SCC準拠版
+# restricted-v2/v3 SCC に対応するため bitnami/postgresql を使用
+# fsGroup / runAsUser は OpenShift が自動割り当てするため明示しない
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lca-postgresql
+  namespace: legacy-code-archaeology-dev
+  labels:
+    app: lca-postgresql
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lca-postgresql
+  template:
+    metadata:
+      labels:
+        app: lca-postgresql
+    spec:
+      containers:
+        - name: postgresql
+          image: docker.io/bitnami/postgresql:16
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRESQL_DATABASE
+              value: lca_db
+            - name: POSTGRESQL_USERNAME
+              value: lca_user
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lca-secret
+                  key: DB_PASSWORD
+            - name: BITNAMI_DEBUG
+              value: "false"
+          volumeMounts:
+            - name: postgresql-data
+              mountPath: /bitnami/postgresql
+          readinessProbe:
+            exec:
+              command:
+                - /bin/sh
+                - -c
+                - pg_isready -U lca_user -d lca_db
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+      volumes:
+        - name: postgresql-data
+          persistentVolumeClaim:
+            claimName: lca-postgresql-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lca-postgresql-pvc
+  namespace: legacy-code-archaeology-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lca-postgresql
+  namespace: legacy-code-archaeology-dev
+spec:
+  selector:
+    app: lca-postgresql
+  ports:
+    - protocol: TCP
+      port: 5432
+      targetPort: 5432
