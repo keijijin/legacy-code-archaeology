@@ -1,0 +1,10 @@
+{
+  "routeId": "customer-registration-route",
+  "fromUri": "jms:queue:customer.in",
+  "steps": [
+    "bean:customerRegistrationService",
+    "to:jdbc:customerDS",
+    "to:http://notification-service/api/send",
+    "log:customer registered"
+  ]
+}

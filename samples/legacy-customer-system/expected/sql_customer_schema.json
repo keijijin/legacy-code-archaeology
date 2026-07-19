@@ -1,0 +1,26 @@
+{
+  "tables": [
+    {
+      "tableName": "customers",
+      "columns": [
+        "id",
+        "customer_id",
+        "customer_type",
+        "kyc_status",
+        "aml_status",
+        "name",
+        "created_at"
+      ]
+    },
+    {
+      "tableName": "accounts",
+      "columns": [
+        "id",
+        "account_id",
+        "customer_id",
+        "status",
+        "opened_at"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/legacy_db
+    username: legacy_user
+    password: legacy_password
+server:
+  port: 8080
+integration:
+  notification:
+    endpoint: http://notification-service/api/send
+  messaging:
+    inbound: jms:queue:customer.in
+  db:
+    write: jdbc:customerDS

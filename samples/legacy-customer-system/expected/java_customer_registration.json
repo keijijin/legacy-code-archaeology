@@ -1,0 +1,10 @@
+{
+  "packageName": "com.legacy.customer",
+  "className": "CustomerRegistrationService",
+  "methodNames": [
+    "canOpenAccount",
+    "registerCustomer",
+    "validateName"
+  ],
+  "methodCount": 3
+}

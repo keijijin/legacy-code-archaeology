@@ -1,0 +1,10 @@
+[
+  {
+    "candidateType": "BusinessRule",
+    "text": "顧客区分が法人で本人確認完了かつAMLクリアの場合に口座開設可能",
+    "confidenceLevel": "LIKELY",
+    "confidenceScore": 0.85,
+    "evidenceIds": ["EV-JAVA-001", "EV-CAMEL-001"],
+    "reason": "条件分岐とルート定義、設計書の記述が一致"
+  }
+]
