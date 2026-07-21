@@ -14,6 +14,7 @@
       --accent: #38bdf8;
       --ok: #22c55e;
       --warn: #f59e0b;
+      --err: #ef4444;
       --border: #334155;
     }
     * { box-sizing: border-box; }
@@ -45,22 +46,8 @@
       padding: 1.25rem;
     }
     .hero { margin-bottom: 1rem; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 1rem;
-      margin: 1rem 0 1.5rem;
-    }
-    a.card {
-      color: inherit;
-      text-decoration: none;
-      transition: transform .15s ease, border-color .15s ease;
-      display: block;
-    }
-    a.card:hover {
-      transform: translateY(-2px);
-      border-color: var(--accent);
-    }
+    .layout { display: grid; grid-template-columns: 320px 1fr; gap: 1rem; align-items: start; }
+    @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
     .badge {
       display: inline-block;
       padding: .15rem .55rem;
@@ -72,6 +59,7 @@
     }
     .badge.ok { color: var(--ok); border-color: rgba(34,197,94,.4); }
     .badge.warn { color: var(--warn); border-color: rgba(245,158,11,.4); }
+    .badge.err { color: var(--err); border-color: rgba(239,68,68,.4); }
     .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
     input, button, select, textarea {
       background: #0b1220;
@@ -79,13 +67,15 @@
       border: 1px solid var(--border);
       border-radius: .6rem;
       padding: .7rem .85rem;
+      font-size: .9rem;
     }
-    input { min-width: 280px; }
+    input, select { min-width: 200px; }
     button {
       background: #0369a1;
       border-color: #0284c7;
       cursor: pointer;
     }
+    button:disabled { opacity: .5; cursor: not-allowed; }
     button.secondary { background: #334155; border-color: #475569; }
     pre {
       white-space: pre-wrap;
@@ -94,16 +84,63 @@
       border: 1px solid var(--border);
       border-radius: .75rem;
       padding: 1rem;
-      min-height: 180px;
+      min-height: 160px;
+      max-height: 420px;
+      overflow: auto;
+      font-size: .82rem;
     }
     .status { min-height: 1.4rem; color: var(--accent); margin: .5rem 0 1rem; }
-    .nav a {
-      color: var(--accent);
-      text-decoration: none;
-      margin-right: .8rem;
-    }
+    .nav a { color: var(--accent); text-decoration: none; margin-right: .8rem; }
     h2 { margin-top: 0; font-size: 1rem; }
+    h3 { font-size: .95rem; }
     .section-title { margin: 1.5rem 0 .75rem; }
+
+    /* Project list */
+    .project-item {
+      padding: .65rem .8rem;
+      border: 1px solid var(--border);
+      border-radius: .6rem;
+      margin-bottom: .5rem;
+      cursor: pointer;
+      transition: border-color .12s ease, background .12s ease;
+    }
+    .project-item:hover { border-color: var(--accent); }
+    .project-item.selected { border-color: var(--accent); background: rgba(56,189,248,.08); }
+    .project-item .pname { font-weight: 600; }
+    .project-item .pid { font-size: .75rem; color: var(--muted); }
+
+    /* Walkthrough steps */
+    .step {
+      border: 1px solid var(--border);
+      border-radius: .8rem;
+      margin-bottom: .8rem;
+      overflow: hidden;
+    }
+    .step-head {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      padding: .8rem 1rem;
+      cursor: pointer;
+      background: rgba(15,23,42,.6);
+    }
+    .step-head:hover { background: rgba(56,189,248,.06); }
+    .step-num {
+      flex: 0 0 auto;
+      width: 1.9rem; height: 1.9rem;
+      border-radius: 999px;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border);
+      font-size: .85rem;
+      color: var(--muted);
+    }
+    .step.done .step-num { border-color: var(--ok); color: var(--ok); }
+    .step.active .step-num { border-color: var(--accent); color: var(--accent); background: rgba(56,189,248,.12); }
+    .step-title { flex: 1; font-weight: 600; }
+    .step-title .sub { display:block; font-weight: 400; font-size: .78rem; color: var(--muted); }
+    .step-body { padding: 0 1rem 1rem; display: none; }
+    .step.open .step-body { display: block; }
+    .chevron { color: var(--muted); font-size: .85rem; }
   </style>
 </head>
 <body>
@@ -125,8 +162,8 @@
       <div class="row" style="justify-content: space-between;">
         <div>
           <div class="badge" id="envBadge">OpenShift / Local</div>
-          <h2 style="margin:.6rem 0 .3rem; font-size:1.3rem;">MVP Portal</h2>
-          <div class="muted">API と一体で配信される Web UI です。独立 SPA ではなく、同一 Route 上で提供します。</div>
+          <h2 style="margin:.6rem 0 .3rem; font-size:1.3rem;">分析ウォークスルー</h2>
+          <div class="muted">左でプロジェクトを選び、右のステップを順に実行します。</div>
         </div>
         <div class="row">
           <span class="badge" id="healthBadge">health: checking...</span>
@@ -134,147 +171,305 @@
       </div>
     </section>
 
-    <div class="grid">
-      <a class="card" href="/review/">
-        <div class="badge">UI</div>
-        <h2>業務ルールレビュー</h2>
-        <div class="muted">候補一覧・根拠確認・承認 / 却下 / 保留</div>
-      </a>
-      <a class="card" href="/impact/">
-        <div class="badge">UI</div>
-        <h2>影響分析コンソール</h2>
-        <div class="muted">COLUMN / ROUTE / PROGRAM の影響探索</div>
-      </a>
-      <a class="card" href="/api/health" target="_blank">
-        <div class="badge">API</div>
-        <h2>Health</h2>
-        <div class="muted">`/api/health` と actuator 状態確認</div>
-      </a>
-      <a class="card" href="#quick">
-        <div class="badge">API</div>
-        <h2>クイック操作</h2>
-        <div class="muted">プロジェクト作成・移行課題・近代化計画</div>
-      </a>
-    </div>
+    <div class="layout">
+      <!-- Left: project list -->
+      <aside class="panel">
+        <div class="row" style="justify-content: space-between;">
+          <h3 style="margin:0;">プロジェクト</h3>
+          <button class="secondary" onclick="loadProjects()">再読込</button>
+        </div>
+        <div class="status" id="listStatus"></div>
+        <div id="projectList"></div>
+        <hr style="border-color: var(--border); margin: 1rem 0;" />
+        <h3>新規作成</h3>
+        <div class="row">
+          <input id="newProjectName" placeholder="プロジェクト名" style="min-width: 160px;" />
+          <button onclick="createProject()">作成</button>
+        </div>
+      </aside>
 
-    <h3 class="section-title">クイック操作</h3>
-    <section class="panel" id="quick">
-      <div class="row">
-        <input id="projectId" placeholder="Project ID（既存 or 作成後）" />
-        <button onclick="createProject()">プロジェクト作成</button>
-        <button class="secondary" onclick="loadProjects()">一覧取得</button>
-        <button class="secondary" onclick="loadMigration()">移行課題</button>
-        <button class="secondary" onclick="loadModernization()">近代化計画</button>
-        <button class="secondary" onclick="goReview()">Review UIへ</button>
-        <button class="secondary" onclick="goImpact()">Impact UIへ</button>
-      </div>
-      <div class="status" id="status"></div>
-      <pre id="output">ここに API 応答が表示されます。</pre>
-    </section>
+      <!-- Right: walkthrough -->
+      <section>
+        <div class="panel" style="margin-bottom: 1rem;">
+          <div class="row" style="justify-content: space-between;">
+            <div>
+              <div class="muted">選択中のプロジェクト</div>
+              <div id="selectedName" style="font-size:1.1rem; font-weight:600;">未選択</div>
+              <div class="pid muted" id="selectedId"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="steps">
+          <div class="step" data-step="1">
+            <div class="step-head" onclick="toggleStep(1)">
+              <div class="step-num">1</div>
+              <div class="step-title">アセット取込<span class="sub">サンプル資産を取り込み、静的解析ジョブを開始</span></div>
+              <div class="chevron">▾</div>
+            </div>
+            <div class="step-body">
+              <p class="muted">サンプルの Java / Camel / SQL 資産を取り込みます。</p>
+              <div class="row">
+                <button onclick="ingestSamples()">サンプル資産を取込＋解析</button>
+                <button class="secondary" onclick="loadJobs()">ジョブ状態</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-step="2">
+            <div class="step-head" onclick="toggleStep(2)">
+              <div class="step-num">2</div>
+              <div class="step-title">業務ルール候補抽出<span class="sub">LLM で業務ルール候補を生成（根拠付き）</span></div>
+              <div class="chevron">▾</div>
+            </div>
+            <div class="step-body">
+              <p class="muted">証拠に基づく業務ルール候補を生成します。生成後は Review UI で承認/却下できます。</p>
+              <div class="row">
+                <button onclick="extractRules()">業務ルール候補を抽出</button>
+                <button class="secondary" onclick="loadRules()">候補一覧</button>
+                <button class="secondary" onclick="goReview()">Review UI を開く</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-step="3">
+            <div class="step-head" onclick="toggleStep(3)">
+              <div class="step-num">3</div>
+              <div class="step-title">影響分析<span class="sub">COLUMN / ROUTE / PROGRAM の影響を探索</span></div>
+              <div class="chevron">▾</div>
+            </div>
+            <div class="step-body">
+              <p class="muted">知識グラフをたどって変更影響を分析します。</p>
+              <div class="row">
+                <button class="secondary" onclick="goImpact()">Impact UI を開く</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-step="4">
+            <div class="step-head" onclick="toggleStep(4)">
+              <div class="step-num">4</div>
+              <div class="step-title">移行課題・近代化<span class="sub">OpenShift 移行課題とモダナイゼーション計画</span></div>
+              <div class="chevron">▾</div>
+            </div>
+            <div class="step-body">
+              <p class="muted">移行課題の抽出と近代化計画の生成を行います。</p>
+              <div class="row">
+                <button onclick="loadMigration()">OpenShift 移行課題</button>
+                <button class="secondary" onclick="loadModernization()">近代化計画</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="section-title">実行結果</h3>
+        <div class="status" id="status"></div>
+        <pre id="output">プロジェクトを選択し、ステップを実行してください。</pre>
+      </section>
+    </div>
   </main>
 
   <script>
     const statusEl = document.getElementById('status');
     const outputEl = document.getElementById('output');
+    const listStatusEl = document.getElementById('listStatus');
     const healthBadge = document.getElementById('healthBadge');
+    let selectedProject = null;
 
-    function setStatus(msg) { statusEl.textContent = msg || ''; }
+    function setStatus(msg, isErr) {
+      statusEl.textContent = msg || '';
+      statusEl.style.color = isErr ? 'var(--err)' : 'var(--accent)';
+    }
     function setOutput(data) {
       outputEl.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
     }
-    function projectId() {
-      return document.getElementById('projectId').value.trim();
+    function requireProject() {
+      if (!selectedProject) { setStatus('先にプロジェクトを選択してください', true); return false; }
+      return true;
     }
-    function goReview() {
-      const id = projectId();
-      location.href = id ? `/review/?projectId=${encodeURIComponent(id)}` : '/review/';
-    }
-    function goImpact() {
-      const id = projectId();
-      location.href = id ? `/impact/?projectId=${encodeURIComponent(id)}` : '/impact/';
+
+    async function api(path, options) {
+      const res = await fetch(path, options);
+      let body;
+      const text = await res.text();
+      try { body = text ? JSON.parse(text) : {}; } catch { body = text; }
+      if (!res.ok) throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
+      return body;
     }
 
     async function checkHealth() {
       try {
-        const res = await fetch('/api/health');
-        const body = await res.json();
-        healthBadge.textContent = `health: ${body.status || res.status}`;
+        const body = await api('/api/health');
+        healthBadge.textContent = `health: ${body.status || 'UP'}`;
         healthBadge.className = 'badge ok';
-      } catch (e) {
+      } catch {
         healthBadge.textContent = 'health: DOWN';
-        healthBadge.className = 'badge warn';
-      }
-    }
-
-    async function createProject() {
-      setStatus('プロジェクト作成中...');
-      try {
-        const res = await fetch('/api/projects', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: 'openshift-demo-' + Date.now(),
-            description: 'OpenShift portal demo project'
-          })
-        });
-        const body = await res.json();
-        if (!res.ok) throw new Error(JSON.stringify(body));
-        document.getElementById('projectId').value = body.projectId || '';
-        setStatus(`作成完了: ${body.projectId}`);
-        setOutput(body);
-      } catch (e) {
-        setStatus('作成失敗');
-        setOutput(String(e.message || e));
+        healthBadge.className = 'badge err';
       }
     }
 
     async function loadProjects() {
-      setStatus('プロジェクト一覧取得中...');
+      listStatusEl.textContent = '読込中...';
       try {
-        const res = await fetch('/api/projects');
-        const body = await res.json();
-        if (!res.ok) throw new Error(JSON.stringify(body));
-        setStatus(`${Array.isArray(body) ? body.length : 0} 件`);
-        setOutput(body);
+        const body = await api('/api/projects');
+        const list = Array.isArray(body) ? body : (body.items || []);
+        renderProjects(list);
+        listStatusEl.textContent = `${list.length} 件`;
       } catch (e) {
-        setStatus('取得失敗');
+        listStatusEl.textContent = '取得失敗';
         setOutput(String(e.message || e));
       }
     }
 
+    function renderProjects(list) {
+      const el = document.getElementById('projectList');
+      el.innerHTML = '';
+      if (!list.length) { el.innerHTML = '<div class="muted">プロジェクトがありません</div>'; return; }
+      list.forEach(p => {
+        const id = p.projectId || p.id;
+        const div = document.createElement('div');
+        div.className = 'project-item' + (selectedProject && selectedProject.id === id ? ' selected' : '');
+        div.innerHTML = `<div class="pname">${p.name || '(no name)'}</div><div class="pid">${id}</div>`;
+        div.onclick = () => selectProject({ id, name: p.name });
+        el.appendChild(div);
+      });
+    }
+
+    function selectProject(p) {
+      selectedProject = p;
+      document.getElementById('selectedName').textContent = p.name || '(no name)';
+      document.getElementById('selectedId').textContent = p.id;
+      document.querySelectorAll('.project-item').forEach(el => {
+        el.classList.toggle('selected', el.querySelector('.pid').textContent === p.id);
+      });
+      setStatus(`選択: ${p.name || p.id}`);
+      openStep(1);
+    }
+
+    async function createProject() {
+      const name = document.getElementById('newProjectName').value.trim() || ('demo-' + Date.now());
+      setStatus('プロジェクト作成中...');
+      try {
+        const body = await api('/api/projects', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, description: 'portal walkthrough project' })
+        });
+        setStatus(`作成完了: ${body.projectId}`);
+        setOutput(body);
+        await loadProjects();
+        selectProject({ id: body.projectId, name });
+      } catch (e) { setStatus('作成失敗', true); setOutput(String(e.message || e)); }
+    }
+
+    // Sample assets (classpath under src/main/resources/samples)
+    const SAMPLE_BASE = 'classpath:samples/legacy-customer-system';
+    const SAMPLE_ASSETS = [
+      { assetType: 'JAVA_SOURCE', sourcePath: `${SAMPLE_BASE}/java/CustomerRegistrationService.java` },
+      { assetType: 'CAMEL_ROUTE', sourcePath: `${SAMPLE_BASE}/camel/customer-registration-route.xml` },
+      { assetType: 'SQL_DDL',     sourcePath: `${SAMPLE_BASE}/sql/customer_schema.sql` },
+      { assetType: 'YAML_CONFIG', sourcePath: `${SAMPLE_BASE}/config/application.yml` }
+    ];
+
+    // Step actions
+    async function ingestSamples() {
+      if (!requireProject()) return;
+      const pid = encodeURIComponent(selectedProject.id);
+      setStatus('サンプル資産を取込中...');
+      try {
+        const results = [];
+        for (const a of SAMPLE_ASSETS) {
+          const r = await api(`/api/projects/${pid}/ingest`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(a)
+          });
+          results.push(r);
+        }
+        setStatus('静的解析ジョブを投入中...');
+        const analyze = await api(`/api/projects/${pid}/analyze`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobType: 'STATIC_ANALYSIS', forceFullReanalysis: false })
+        });
+        markDone(1);
+        setStatus(`取込 ${results.length} 件 / 解析ジョブ ${analyze.jobId || ''}`);
+        setOutput({ ingested: results, analyzeJob: analyze });
+      } catch (e) { setStatus('取込失敗', true); setOutput(String(e.message || e)); }
+    }
+    async function loadJobs() {
+      if (!requireProject()) return;
+      setStatus('ジョブ状態取得中...');
+      try { setOutput(await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/jobs`)); setStatus('取得完了'); }
+      catch (e) { setStatus('取得失敗', true); setOutput(String(e.message || e)); }
+    }
+    async function extractRules() {
+      if (!requireProject()) return;
+      setStatus('業務ルール候補を抽出中...');
+      try {
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/ai/extract-rules`, { method: 'POST' });
+        markDone(2);
+        setStatus('抽出を実行しました');
+        setOutput(body);
+      } catch (e) { setStatus('抽出失敗', true); setOutput(String(e.message || e)); }
+    }
+    async function loadRules() {
+      if (!requireProject()) return;
+      setStatus('業務ルール候補取得中...');
+      try { setOutput(await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/rules`)); setStatus('取得完了'); }
+      catch (e) { setStatus('取得失敗', true); setOutput(String(e.message || e)); }
+    }
     async function loadMigration() {
-      const id = projectId();
-      if (!id) return setStatus('Project ID を入力してください');
+      if (!requireProject()) return;
       setStatus('OpenShift移行課題を取得中...');
       try {
-        const res = await fetch(`/api/projects/${encodeURIComponent(id)}/openshift-migration-issues`);
-        const body = await res.json();
-        if (!res.ok) throw new Error(JSON.stringify(body));
-        setStatus(`課題 ${body.issueCount ?? 0} 件`);
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/openshift-migration-issues`);
+        markDone(4);
+        setStatus(`課題 ${body.issueCount ?? (Array.isArray(body.issues) ? body.issues.length : 0)} 件`);
         setOutput(body);
-      } catch (e) {
-        setStatus('取得失敗');
-        setOutput(String(e.message || e));
-      }
+      } catch (e) { setStatus('取得失敗', true); setOutput(String(e.message || e)); }
     }
-
     async function loadModernization() {
-      const id = projectId();
-      if (!id) return setStatus('Project ID を入力してください');
+      if (!requireProject()) return;
       setStatus('モダナイゼーション計画を取得中...');
       try {
-        const res = await fetch(`/api/projects/${encodeURIComponent(id)}/modernization-plan`);
-        const body = await res.json();
-        if (!res.ok) throw new Error(JSON.stringify(body));
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/modernization-plan`);
         setStatus(`候補 ${body.candidateCount ?? 0} 件`);
         setOutput(body);
-      } catch (e) {
-        setStatus('取得失敗');
-        setOutput(String(e.message || e));
-      }
+      } catch (e) { setStatus('取得失敗', true); setOutput(String(e.message || e)); }
     }
 
-    checkHealth();
+    function goReview() {
+      const q = selectedProject ? `?projectId=${encodeURIComponent(selectedProject.id)}` : '';
+      location.href = `/review/${q}`;
+    }
+    function goImpact() {
+      const q = selectedProject ? `?projectId=${encodeURIComponent(selectedProject.id)}` : '';
+      location.href = `/impact/${q}`;
+    }
+
+    // Walkthrough step UI
+    function toggleStep(n) {
+      const step = document.querySelector(`.step[data-step="${n}"]`);
+      step.classList.toggle('open');
+    }
+    function openStep(n) {
+      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+      const step = document.querySelector(`.step[data-step="${n}"]`);
+      if (step) { step.classList.add('open', 'active'); }
+    }
+    function markDone(n) {
+      const step = document.querySelector(`.step[data-step="${n}"]`);
+      if (step) step.classList.add('done');
+      openStep(Math.min(n + 1, 4));
+    }
+
+    // init
+    (function init() {
+      openStep(1);
+      checkHealth();
+      loadProjects();
+    })();
   </script>
 </body>
 </html>
