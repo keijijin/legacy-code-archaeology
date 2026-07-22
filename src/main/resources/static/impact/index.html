@@ -4,68 +4,63 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>影響分析 | レガシーコード考古学</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <style>
     :root {
-      --bg: #0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --border:#334155;
+      --bg:#0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --border:#334155;
       --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
     }
     body { margin:0; font-family:ui-sans-serif,system-ui,sans-serif; background:linear-gradient(180deg,#0f172a,#111827); color:var(--text); }
-    header, main { max-width:1400px; margin:0 auto; }
+    header, main { max-width:1500px; margin:0 auto; }
     header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
     main { padding:1.5rem; }
     a { color:var(--accent); text-decoration:none; margin-right:.8rem; }
     .row { display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
-    input, select, button {
+    input, select, button, textarea {
       background:#0b1220; color:var(--text); border:1px solid var(--border); border-radius:.5rem; padding:.55rem .75rem; font-size:.88rem;
     }
+    textarea { width:100%; min-height:130px; font-family:ui-monospace,SFMono-Regular,monospace; }
     button { background:#0369a1; border-color:#0284c7; cursor:pointer; }
     button.secondary { background:#334155; border-color:#475569; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:.75rem; padding:1rem; margin-bottom:.75rem; }
+    .card, .panel { background:var(--card); border:1px solid var(--border); border-radius:.75rem; padding:1rem; margin-bottom:.75rem; }
     .muted { color:var(--muted); }
     pre { white-space:pre-wrap; background:#0b1220; border:1px solid var(--border); border-radius:.5rem; padding:.75rem; font-size:.8rem; max-height:300px; overflow:auto; }
     #status { min-height:1.2rem; color:var(--accent); margin-bottom:1rem; }
-    .layout { display:grid; grid-template-columns: 380px 1fr 340px; gap:1rem; }
-    @media (max-width:1200px) { .layout { grid-template-columns: 1fr; } }
-    .panel { background:var(--card); border:1px solid var(--border); border-radius:.75rem; padding:1rem; }
+    .layout { display:grid; grid-template-columns: 360px 1fr 340px; gap:1rem; }
+    @media (max-width:1280px) { .layout { grid-template-columns: 1fr; } }
     .panel h3 { margin:0 0 .5rem; font-size:.95rem; }
-    .tree-node {
-      padding:.35rem .5rem;
-      border-left:2px solid var(--border);
-      margin-left:.6rem;
-      cursor:pointer;
-      transition:background .1s;
-    }
+    .tree-node { padding:.35rem .5rem; border-left:2px solid var(--border); margin-left:.6rem; cursor:pointer; transition:background .1s; }
     .tree-node:hover { background:rgba(56,189,248,.06); }
     .tree-node.root { border-left:none; margin-left:0; padding-left:0; }
     .tree-node .name { font-weight:600; }
     .tree-node .meta { font-size:.72rem; color:var(--muted); }
     .tree-node.selected { background:rgba(56,189,248,.15); border-color:var(--accent); }
     .filter-bar { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.6rem; }
-    .node-detail {
-      background:#0b1220;
-      border:1px solid var(--border);
-      border-radius:.5rem;
-      padding:.75rem;
-    }
+    .node-detail { background:#0b1220; border:1px solid var(--border); border-radius:.5rem; padding:.75rem; }
     .node-detail h4 { margin:0 0 .4rem; }
     .node-detail .kv { display:flex; gap:.4rem; margin-bottom:.25rem; font-size:.82rem; }
     .node-detail .kv .k { color:var(--muted); min-width:90px; }
-    .badge {
-      display:inline-block; padding:.1rem .4rem; border-radius:999px; font-size:.7rem;
-      border:1px solid var(--border); color:var(--muted);
-    }
+    .badge { display:inline-block; padding:.1rem .4rem; border-radius:999px; font-size:.7rem; border:1px solid var(--border); color:var(--muted); }
     .badge.high { color:var(--err); border-color:rgba(239,68,68,.4); }
     .badge.medium { color:var(--warn); border-color:rgba(245,158,11,.4); }
     .badge.low { color:var(--ok); border-color:rgba(34,197,94,.4); }
-    .graph-svg { background:#0b1220; border:1px solid var(--border); border-radius:.5rem; }
-    .legend { font-size:.72rem; color:var(--muted); margin-top:.4rem; }
+    .graph-host, .mermaid-host { background:#0b1220; border:1px solid var(--border); border-radius:.5rem; min-height:420px; overflow:auto; }
+    #d3Graph { width:100%; height:520px; display:block; }
+    .tabs { display:flex; gap:.5rem; margin-bottom:.75rem; flex-wrap:wrap; }
+    .tab { padding:.45rem .75rem; border:1px solid var(--border); border-radius:.5rem; cursor:pointer; background:#0b1220; color:var(--muted); }
+    .tab.active { border-color:var(--accent); color:var(--accent); background:rgba(56,189,248,.08); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    th, td { border-bottom:1px solid var(--border); padding:.45rem .5rem; text-align:left; vertical-align:top; }
   </style>
 </head>
 <body>
   <header>
     <div>
       <strong>影響分析コンソール</strong>
-      <div class="muted">COLUMN / TABLE / ROUTE / PROGRAM / ENDPOINT — 関係ツリー + インタラクション</div>
+      <div class="muted">Mermaid / D3.js / Neo4j 直接クエリ</div>
     </div>
     <div>
       <a href="/">Dashboard</a>
@@ -74,81 +69,109 @@
     </div>
   </header>
   <main>
-    <div class="row">
-      <input id="projectId" placeholder="Project ID" size="28" />
-      <select id="targetType">
-        <option>COLUMN</option>
-        <option>TABLE</option>
-        <option>ROUTE</option>
-        <option>PROGRAM</option>
-        <option>ENDPOINT</option>
-        <option>API</option>
-      </select>
-      <input id="targetName" placeholder="targetName (例: customer_id)" size="26" />
-      <input id="targetId" placeholder="targetId (任意)" size="18" />
-      <button onclick="runImpact()">影響分析実行</button>
-      <button class="secondary" onclick="clearAll()">クリア</button>
+    <div class="card">
+      <div class="row">
+        <input id="projectId" placeholder="Project ID" size="28" />
+        <select id="targetType">
+          <option>COLUMN</option><option>TABLE</option><option>ROUTE</option><option>PROGRAM</option><option>ENDPOINT</option><option>API</option>
+        </select>
+        <input id="targetName" placeholder="targetName (例: customer_id)" size="26" />
+        <input id="targetId" placeholder="targetId (任意)" size="18" />
+        <button onclick="runImpact()">影響分析実行</button>
+        <button class="secondary" onclick="loadProjectGraph()">全体グラフ読込</button>
+        <button class="secondary" onclick="clearAll()">クリア</button>
+      </div>
+      <div id="status"></div>
     </div>
-    <div id="status"></div>
 
     <div class="layout">
-      <!-- 1. 関係ツリー -->
       <div class="panel">
-        <h3>関係ツリー <span class="muted" style="font-weight:400;">(depth 順)</span></h3>
+        <h3>関係ツリー</h3>
         <div id="treeArea" style="max-height:520px; overflow:auto;"></div>
       </div>
 
-      <!-- 2. グラフ可視化（簡易 SVG） -->
       <div class="panel">
-        <h3>グラフ可視化</h3>
-        <div class="row">
-          <button class="secondary" onclick="renderGraph()">グラフ再描画</button>
-          <span class="muted" style="font-size:.75rem;">ノードをクリックで詳細表示</span>
+        <div class="tabs">
+          <div class="tab active" data-tab="d3" onclick="switchTab('d3')">D3 力学グラフ</div>
+          <div class="tab" data-tab="mermaid" onclick="switchTab('mermaid')">Mermaid flowchart TD</div>
+          <div class="tab" data-tab="table" onclick="switchTab('table')">クエリ結果表</div>
         </div>
-        <svg id="graphSvg" class="graph-svg" width="100%" height="480"></svg>
-        <div class="legend">色: HIGH(赤) / MEDIUM(黄) / LOW(緑) — サイズ: 影響度</div>
+
+        <div id="tab-d3" class="tab-panel active">
+          <h3>D3.js による力学グラフ</h3>
+          <div class="graph-host"><svg id="d3Graph"></svg></div>
+          <div class="muted" style="font-size:.75rem; margin-top:.4rem;">ドラッグ可能 / クリックで詳細表示 / フィルタ反映</div>
+        </div>
+
+        <div id="tab-mermaid" class="tab-panel">
+          <h3>Mermaid グラフの自動生成</h3>
+          <div class="row">
+            <button class="secondary" onclick="renderMermaidFromCurrentGraph()">現在のグラフから Mermaid 生成</button>
+            <button class="secondary" onclick="loadMermaidFromApi()">API から Mermaid 読込</button>
+          </div>
+          <div id="mermaidHost" class="mermaid-host"></div>
+          <pre id="mermaidSource"></pre>
+        </div>
+
+        <div id="tab-table" class="tab-panel">
+          <h3>Neo4j クエリ結果</h3>
+          <div id="tableHost"></div>
+        </div>
       </div>
 
-      <!-- 3. フィルタ + 詳細 -->
       <div>
         <div class="panel" style="margin-bottom:.75rem;">
           <h3>フィルタ</h3>
           <div class="filter-bar">
-            <select id="filterType" onchange="applyFilters()">
-              <option value="">全 nodeType</option>
-            </select>
-            <select id="filterLevel" onchange="applyFilters()">
-              <option value="">全 impactLevel</option>
-              <option>HIGH</option>
-              <option>MEDIUM</option>
-              <option>LOW</option>
-            </select>
+            <select id="filterType" onchange="applyFilters()"><option value="">全 nodeType</option></select>
             <input id="filterText" placeholder="名前で検索" oninput="applyFilters()" />
           </div>
-          <div class="muted" style="font-size:.75rem;">※ フィルタはツリー・グラフに反映</div>
+          <div class="muted" style="font-size:.75rem;">※ ツリー / Mermaid / D3 に反映</div>
+        </div>
+
+        <div class="panel" style="margin-bottom:.75rem;">
+          <h3>ノード詳細</h3>
+          <div id="detailArea" class="node-detail muted">ノードをクリックすると詳細が表示されます。</div>
         </div>
 
         <div class="panel">
-          <h3>ノード詳細</h3>
-          <div id="detailArea" class="node-detail muted">ノードをクリックすると詳細が表示されます。</div>
+          <h3>Neo4j 直接クエリ API</h3>
+          <div class="muted" style="font-size:.75rem; margin-bottom:.5rem;">読み取り専用 Cypher のみ許可。mode は GRAPH / TABLE / MERMAID。</div>
+          <textarea id="cypherInput">MATCH (a)-[r]->(b)
+WHERE a.projectId = $projectId AND b.projectId = $projectId
+RETURN a.id AS sourceId,
+       labels(a)[0] AS sourceLabel,
+       coalesce(a.className, a.routeId, a.tableName, a.name, a.id) AS sourceName,
+       coalesce(a.sourcePath, '') AS sourceSourcePath,
+       b.id AS targetId,
+       labels(b)[0] AS targetLabel,
+       coalesce(b.className, b.routeId, b.tableName, b.name, b.id) AS targetName,
+       coalesce(b.sourcePath, '') AS targetSourcePath,
+       type(r) AS relType
+LIMIT 200</textarea>
+          <div class="row" style="margin-top:.6rem;">
+            <select id="queryMode"><option>GRAPH</option><option>TABLE</option><option>MERMAID</option></select>
+            <button onclick="runCypherQuery()">Cypher 実行</button>
+          </div>
         </div>
       </div>
     </div>
 
     <div style="margin-top:1rem;">
-      <div class="row">
-        <button class="secondary" onclick="showRaw()">生データ表示</button>
-      </div>
+      <button class="secondary" onclick="showRaw()">生データ表示</button>
       <pre id="output">{}</pre>
     </div>
   </main>
 
   <script>
+    mermaid.initialize({ startOnLoad: false, theme: 'dark' });
     const params = new URLSearchParams(location.search);
     if (params.get('projectId')) document.getElementById('projectId').value = params.get('projectId');
 
     let lastResult = null;
-    let filteredNodes = [];
+    let currentGraph = { nodes: [], edges: [] };
+    let filteredGraph = { nodes: [], edges: [] };
+    let selectedNodeEl = null;
 
     function setStatus(msg, isErr) {
       const el = document.getElementById('status');
@@ -156,13 +179,31 @@
       el.style.color = isErr ? 'var(--err)' : 'var(--accent)';
     }
 
+    function switchTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${name}`));
+    }
+
     function clearAll() {
       document.getElementById('treeArea').innerHTML = '';
-      document.getElementById('graphSvg').innerHTML = '';
       document.getElementById('detailArea').innerHTML = 'ノードをクリックすると詳細が表示されます。';
       document.getElementById('output').textContent = '{}';
+      document.getElementById('tableHost').innerHTML = '';
+      document.getElementById('mermaidHost').innerHTML = '';
+      document.getElementById('mermaidSource').textContent = '';
+      d3.select('#d3Graph').selectAll('*').remove();
       lastResult = null;
-      filteredNodes = [];
+      currentGraph = { nodes: [], edges: [] };
+      filteredGraph = { nodes: [], edges: [] };
+    }
+
+    async function api(path, options) {
+      const res = await fetch(path, options);
+      const text = await res.text();
+      let body;
+      try { body = text ? JSON.parse(text) : {}; } catch { body = text; }
+      if (!res.ok) throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
+      return body;
     }
 
     async function runImpact() {
@@ -170,198 +211,321 @@
       const targetType = document.getElementById('targetType').value;
       const targetName = document.getElementById('targetName').value.trim();
       const targetId = document.getElementById('targetId').value.trim();
-      if (!projectId) { setStatus('Project ID を入力してください', true); return; }
-      if (!targetName && !targetId) { setStatus('targetName または targetId が必要です', true); return; }
-      setStatus('実行中...');
+      if (!projectId) return setStatus('Project ID を入力してください', true);
+      if (!targetName && !targetId) return setStatus('targetName または targetId が必要です', true);
+      setStatus('影響分析を実行中...');
       try {
-        const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/impact`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const body = await api(`/api/projects/${encodeURIComponent(projectId)}/impact`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ targetType, targetName: targetName || null, targetId: targetId || null, maxDepth: 3 })
         });
-        const body = await res.json();
-        if (!res.ok) throw new Error(JSON.stringify(body));
         lastResult = body;
-        setStatus(`完了: impacted=${body.impactedCount ?? 0}`);
         document.getElementById('output').textContent = JSON.stringify(body, null, 2);
-        // ツリー表示
-        renderTree(body.impactedNodes || []);
-        // フィルタ初期化
-        initFilters(body.impactedNodes || []);
-        // グラフ描画
-        filteredNodes = body.impactedNodes || [];
-        renderGraph();
+
+        const impactNodes = (body.impactedNodes || []).map(n => ({
+          id: n.nodeId || n.name,
+          label: n.nodeType || 'Node',
+          name: n.name || n.nodeId,
+          sourcePath: n.sourcePath || '',
+          properties: { depth: n.depth, impactLevel: n.impactLevel, relationPath: n.relationPath || [] }
+        }));
+        const edges = [];
+        (body.impactedNodes || []).forEach(n => {
+          const path = n.relationPath || [];
+          for (let i = 0; i < path.length - 1; i++) {
+            edges.push({ source: path[i], target: path[i+1], type: 'IMPACTS' });
+          }
+        });
+        currentGraph = dedupeGraph({ nodes: impactNodes, edges });
+        initFilters(currentGraph.nodes);
+        applyFilters();
+        setStatus(`完了: impacted=${body.impactedCount ?? 0}`);
       } catch (e) {
         setStatus('失敗', true);
         document.getElementById('output').textContent = String(e.message || e);
       }
     }
 
-    // フィルタ初期化
+    async function loadProjectGraph() {
+      const projectId = document.getElementById('projectId').value.trim();
+      if (!projectId) return setStatus('Project ID を入力してください', true);
+      setStatus('プロジェクト全体グラフを読込中...');
+      try {
+        const body = await api(`/api/projects/${encodeURIComponent(projectId)}/graph/edges`);
+        lastResult = body;
+        currentGraph = { nodes: body.nodes || [], edges: body.edges || [] };
+        document.getElementById('output').textContent = JSON.stringify(body, null, 2);
+        initFilters(currentGraph.nodes);
+        applyFilters();
+        setStatus(`全体グラフ読込完了: nodes=${currentGraph.nodes.length}, edges=${currentGraph.edges.length}`);
+      } catch (e) {
+        setStatus('読込失敗', true);
+        document.getElementById('output').textContent = String(e.message || e);
+      }
+    }
+
+    async function runCypherQuery() {
+      const projectId = document.getElementById('projectId').value.trim();
+      const cypher = document.getElementById('cypherInput').value.trim();
+      const mode = document.getElementById('queryMode').value;
+      if (!projectId) return setStatus('Project ID を入力してください', true);
+      if (!cypher) return setStatus('Cypher を入力してください', true);
+      setStatus(`Cypher 実行中... mode=${mode}`);
+      try {
+        const body = await api(`/api/projects/${encodeURIComponent(projectId)}/graph/query`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cypher, mode, bindProjectId: true })
+        });
+        lastResult = body;
+        document.getElementById('output').textContent = JSON.stringify(body, null, 2);
+        renderTable(body.rows || []);
+        if (mode === 'GRAPH') {
+          currentGraph = { nodes: body.nodes || [], edges: body.edges || [] };
+          initFilters(currentGraph.nodes);
+          applyFilters();
+          switchTab('d3');
+        } else if (mode === 'MERMAID') {
+          await renderMermaid(body.mermaid || 'flowchart TD');
+          document.getElementById('mermaidSource').textContent = body.mermaid || '';
+          switchTab('mermaid');
+        } else {
+          switchTab('table');
+        }
+        setStatus(`Cypher 実行完了: rows=${body.rowCount ?? 0}`);
+      } catch (e) {
+        setStatus('Cypher 実行失敗', true);
+        document.getElementById('output').textContent = String(e.message || e);
+      }
+    }
+
     function initFilters(nodes) {
       const typeSel = document.getElementById('filterType');
-      const types = [...new Set(nodes.map(n => n.nodeType).filter(Boolean))];
+      const types = [...new Set(nodes.map(n => n.label || n.nodeType).filter(Boolean))];
       typeSel.innerHTML = '<option value="">全 nodeType</option>' + types.map(t => `<option>${t}</option>`).join('');
-      document.getElementById('filterLevel').value = '';
       document.getElementById('filterText').value = '';
     }
 
     function applyFilters() {
-      if (!lastResult) return;
       const typeVal = document.getElementById('filterType').value;
-      const levelVal = document.getElementById('filterLevel').value;
       const textVal = document.getElementById('filterText').value.trim().toLowerCase();
-      filteredNodes = (lastResult.impactedNodes || []).filter(n => {
-        const okType = !typeVal || n.nodeType === typeVal;
-        const okLevel = !levelVal || n.impactLevel === levelVal;
-        const okText = !textVal || (n.name || '').toLowerCase().includes(textVal);
-        return okType && okLevel && okText;
+      const nodes = currentGraph.nodes.filter(n => {
+        const nodeType = n.label || n.nodeType || '';
+        const nodeName = n.name || '';
+        return (!typeVal || nodeType === typeVal) && (!textVal || nodeName.toLowerCase().includes(textVal));
       });
-      renderTree(filteredNodes);
-      renderGraph();
+      const nodeIds = new Set(nodes.map(n => n.id || n.nodeId));
+      const edges = currentGraph.edges.filter(e => nodeIds.has(edgeSourceId(e)) && nodeIds.has(edgeTargetId(e)));
+      filteredGraph = dedupeGraph({ nodes, edges });
+      renderTreeFromGraph(filteredGraph);
+      renderD3Graph(filteredGraph);
+      renderMermaidFromCurrentGraph();
+      renderTable(lastResult && lastResult.rows ? lastResult.rows : []);
     }
 
-    // 関係ツリー表示（depth 順にグループ化）
-    function renderTree(nodes) {
+    function edgeSourceId(e) { return typeof e.source === 'object' ? e.source.id : e.source; }
+    function edgeTargetId(e) { return typeof e.target === 'object' ? e.target.id : e.target; }
+    function dedupeGraph(graph) {
+      const nodeMap = new Map();
+      (graph.nodes || []).forEach(n => nodeMap.set(n.id || n.nodeId, { ...n, id: n.id || n.nodeId }));
+      const edgeMap = new Map();
+      (graph.edges || []).forEach(e => {
+        const s = edgeSourceId(e), t = edgeTargetId(e), ty = e.type || 'RELATED';
+        edgeMap.set(`${s}|${t}|${ty}`, { source: s, target: t, type: ty });
+      });
+      return { nodes: [...nodeMap.values()], edges: [...edgeMap.values()] };
+    }
+
+    function renderTreeFromGraph(graph) {
       const area = document.getElementById('treeArea');
       area.innerHTML = '';
-      if (!nodes.length) { area.innerHTML = '<div class="muted">ノードがありません</div>'; return; }
-      // depth でグループ化
-      const byDepth = {};
-      nodes.forEach(n => {
-        const d = n.depth ?? 0;
-        (byDepth[d] || (byDepth[d] = [])).push(n);
+      if (!graph.nodes.length) { area.innerHTML = '<div class="muted">ノードがありません</div>'; return; }
+      const grouped = {};
+      graph.nodes.forEach(n => {
+        const group = n.label || n.nodeType || 'Node';
+        (grouped[group] || (grouped[group] = [])).push(n);
       });
-      const depths = Object.keys(byDepth).map(Number).sort((a,b)=>a-b);
-      depths.forEach(d => {
+      Object.keys(grouped).sort().forEach(group => {
         const header = document.createElement('div');
         header.style.cssText = 'margin:.4rem 0 .2rem; font-size:.8rem; color:var(--muted);';
-        header.textContent = `depth=${d}`;
+        header.textContent = group;
         area.appendChild(header);
-        byDepth[d].forEach(n => {
+        grouped[group].forEach(n => {
           const div = document.createElement('div');
-          div.className = 'tree-node' + (d === 0 ? ' root' : '');
-          const levelBadge = n.impactLevel ? `<span class="badge ${n.impactLevel.toLowerCase()}">${n.impactLevel}</span>` : '';
-          div.innerHTML = `
-            <div class="name">${n.name || n.nodeId || '(no name)'} ${levelBadge}</div>
-            <div class="meta">${n.nodeType || ''} / ${n.nodeId || ''} ${n.sourcePath ? '· ' + n.sourcePath : ''}</div>
-          `;
+          div.className = 'tree-node root';
+          div.innerHTML = `<div class="name">${escapeHtml(n.name || n.id)}</div><div class="meta">${escapeHtml(n.id)} ${n.sourcePath ? '· ' + escapeHtml(n.sourcePath) : ''}</div>`;
           div.onclick = () => showNodeDetail(n, div);
           area.appendChild(div);
         });
       });
     }
 
-    let selectedNodeEl = null;
     function showNodeDetail(node, el) {
       if (selectedNodeEl) selectedNodeEl.classList.remove('selected');
       if (el) { el.classList.add('selected'); selectedNodeEl = el; }
-      const area = document.getElementById('detailArea');
-      const path = (node.relationPath || []).join(' → ');
-      area.innerHTML = `
-        <h4>${node.name || node.nodeId || '(no name)'}</h4>
-        <div class="kv"><div class="k">nodeType</div><div>${node.nodeType || '-'}</div></div>
-        <div class="kv"><div class="k">nodeId</div><div>${node.nodeId || '-'}</div></div>
-        <div class="kv"><div class="k">impactLevel</div><div>${node.impactLevel || '-'}</div></div>
-        <div class="kv"><div class="k">depth</div><div>${node.depth ?? '-'}</div></div>
-        <div class="kv"><div class="k">sourcePath</div><div style="word-break:break-all;">${node.sourcePath || '-'}</div></div>
-        <div class="kv"><div class="k">relationPath</div><div style="word-break:break-all;">${path || '-'}</div></div>
+      const props = node.properties || {};
+      document.getElementById('detailArea').innerHTML = `
+        <h4>${escapeHtml(node.name || node.id || '(no name)')}</h4>
+        <div class="kv"><div class="k">label</div><div>${escapeHtml(node.label || node.nodeType || '-')}</div></div>
+        <div class="kv"><div class="k">id</div><div>${escapeHtml(node.id || node.nodeId || '-')}</div></div>
+        <div class="kv"><div class="k">sourcePath</div><div style="word-break:break-all;">${escapeHtml(node.sourcePath || '-')}</div></div>
+        <div class="kv"><div class="k">properties</div><div><pre>${escapeHtml(JSON.stringify(props, null, 2))}</pre></div></div>
       `;
     }
 
-    // 簡易グラフ描画（SVG）
-    function renderGraph() {
-      const svg = document.getElementById('graphSvg');
-      svg.innerHTML = '';
-      if (!filteredNodes.length) return;
-      const w = svg.clientWidth || 560;
-      const h = 480;
-      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    async function loadMermaidFromApi() {
+      const projectId = document.getElementById('projectId').value.trim();
+      if (!projectId) return setStatus('Project ID を入力してください', true);
+      try {
+        const body = await api(`/api/projects/${encodeURIComponent(projectId)}/graph/mermaid`);
+        lastResult = body;
+        document.getElementById('mermaidSource').textContent = body.mermaid || '';
+        await renderMermaid(body.mermaid || 'flowchart TD');
+        switchTab('mermaid');
+        setStatus('Mermaid を API から読込しました');
+      } catch (e) {
+        setStatus('Mermaid 読込失敗', true);
+        document.getElementById('output').textContent = String(e.message || e);
+      }
+    }
 
-      // 簡易レイアウト: depth で横方向、同一 depth で縦方向に並べる
-      const byDepth = {};
-      filteredNodes.forEach(n => {
-        const d = n.depth ?? 0;
-        (byDepth[d] || (byDepth[d] = [])).push(n);
+    function buildMermaidFromGraph(graph) {
+      const lines = ['flowchart TD'];
+      (graph.nodes || []).forEach(n => {
+        lines.push(`    ${sanitizeMermaidId(n.id)}["${escapeMermaidLabel(n.name || n.id)}"]`);
       });
-      const depths = Object.keys(byDepth).map(Number).sort((a,b)=>a-b);
-      const xStep = depths.length > 1 ? Math.max(80, Math.floor((w - 80) / (depths.length - 1))) : 120;
-      const nodeR = 18;
-
-      // ノード座標
-      const pos = new Map();
-      depths.forEach((d, i) => {
-        const arr = byDepth[d];
-        const yStep = Math.max(36, Math.floor((h - 60) / Math.max(1, arr.length - 1)));
-        arr.forEach((n, j) => {
-          const x = 40 + i * xStep;
-          const y = 40 + (arr.length > 1 ? j * yStep : (h - 80) / 2);
-          pos.set(n.nodeId || n.name, { x, y, node: n });
-        });
+      (graph.edges || []).forEach(e => {
+        lines.push(`    ${sanitizeMermaidId(edgeSourceId(e))} -->|${escapeMermaidLabel(e.type || 'RELATED')}| ${sanitizeMermaidId(edgeTargetId(e))}`);
       });
+      return lines.join('\n');
+    }
 
-      // エッジ（relationPath の先頭2つを簡易接続）
-      filteredNodes.forEach(n => {
-        const path = n.relationPath || [];
-        if (path.length >= 2) {
-          const a = pos.get(path[0]);
-          const b = pos.get(path[1]);
-          if (a && b) {
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-            line.setAttribute('x1', a.x);
-            line.setAttribute('y1', a.y);
-            line.setAttribute('x2', b.x);
-            line.setAttribute('y2', b.y);
-            line.setAttribute('stroke', '#475569');
-            line.setAttribute('stroke-width', '1.5');
-            svg.appendChild(line);
-          }
-        }
-      });
+    async function renderMermaidFromCurrentGraph() {
+      const src = buildMermaidFromGraph(filteredGraph.nodes.length ? filteredGraph : currentGraph);
+      document.getElementById('mermaidSource').textContent = src;
+      await renderMermaid(src);
+    }
 
-      // ノード
-      filteredNodes.forEach(n => {
-        const key = n.nodeId || n.name;
-        const p = pos.get(key);
-        if (!p) return;
-        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
-        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-        const color = n.impactLevel === 'HIGH' ? '#ef4444' : n.impactLevel === 'MEDIUM' ? '#f59e0b' : '#22c55e';
-        const r = nodeR + Math.min(6, (n.depth ?? 0) * 2);
-        circle.setAttribute('cx', p.x);
-        circle.setAttribute('cy', p.y);
-        circle.setAttribute('r', r);
-        circle.setAttribute('fill', color);
-        circle.setAttribute('stroke', '#0b1220');
-        circle.setAttribute('stroke-width', '2');
-        circle.style.cursor = 'pointer';
-        circle.onclick = () => {
-          // 詳細表示
-          const area = document.getElementById('detailArea');
-          const pathStr = (n.relationPath || []).join(' → ');
-          area.innerHTML = `
-            <h4>${n.name || n.nodeId || '(no name)'}</h4>
-            <div class="kv"><div class="k">nodeType</div><div>${n.nodeType || '-'}</div></div>
-            <div class="kv"><div class="k">nodeId</div><div>${n.nodeId || '-'}</div></div>
-            <div class="kv"><div class="k">impactLevel</div><div>${n.impactLevel || '-'}</div></div>
-            <div class="kv"><div class="k">depth</div><div>${n.depth ?? '-'}</div></div>
-            <div class="kv"><div class="k">sourcePath</div><div style="word-break:break-all;">${n.sourcePath || '-'}</div></div>
-            <div class="kv"><div class="k">relationPath</div><div style="word-break:break-all;">${pathStr || '-'}</div></div>
-          `;
-        };
-        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        label.setAttribute('x', p.x);
-        label.setAttribute('y', p.y + r + 14);
-        label.setAttribute('fill', '#94a3b8');
-        label.setAttribute('font-size', '10');
-        label.setAttribute('text-anchor', 'middle');
-        label.textContent = (n.name || n.nodeId || '').slice(0, 18);
-        g.appendChild(circle);
-        g.appendChild(label);
-        svg.appendChild(g);
+    async function renderMermaid(source) {
+      const host = document.getElementById('mermaidHost');
+      host.innerHTML = '<div class="muted" style="padding:1rem;">描画中...</div>';
+      try {
+        const id = 'mermaid-' + Date.now();
+        const { svg } = await mermaid.render(id, source);
+        host.innerHTML = svg;
+      } catch (e) {
+        host.innerHTML = `<pre>${escapeHtml(source)}</pre>`;
+        setStatus('Mermaid 描画失敗。ソースを表示しています。', true);
+      }
+    }
+
+    function renderD3Graph(graph) {
+      const svg = d3.select('#d3Graph');
+      svg.selectAll('*').remove();
+      const width = document.getElementById('d3Graph').clientWidth || 760;
+      const height = 520;
+      svg.attr('viewBox', `0 0 ${width} ${height}`);
+      if (!graph.nodes.length) return;
+
+      const nodes = graph.nodes.map(n => ({ ...n }));
+      const links = graph.edges.map(e => ({ source: edgeSourceId(e), target: edgeTargetId(e), type: e.type || 'RELATED' }));
+      const nodeMap = new Map(nodes.map(n => [n.id, n]));
+      const validLinks = links.filter(l => nodeMap.has(l.source) && nodeMap.has(l.target));
+
+      const simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(validLinks).id(d => d.id).distance(120))
+        .force('charge', d3.forceManyBody().strength(-420))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(36));
+
+      const link = svg.append('g')
+        .attr('stroke', '#64748b')
+        .attr('stroke-opacity', 0.8)
+        .selectAll('line')
+        .data(validLinks)
+        .join('line')
+        .attr('stroke-width', 1.5);
+
+      const linkLabel = svg.append('g')
+        .selectAll('text')
+        .data(validLinks)
+        .join('text')
+        .attr('fill', '#94a3b8')
+        .attr('font-size', 9)
+        .text(d => d.type);
+
+      const node = svg.append('g')
+        .selectAll('g')
+        .data(nodes)
+        .join('g')
+        .style('cursor', 'pointer')
+        .call(drag(simulation));
+
+      node.append('circle')
+        .attr('r', 20)
+        .attr('fill', d => colorByLabel(d.label))
+        .attr('stroke', '#0b1220')
+        .attr('stroke-width', 2)
+        .on('click', (_, d) => showNodeDetail(d));
+
+      node.append('text')
+        .text(d => truncate(d.name || d.id, 18))
+        .attr('fill', '#e2e8f0')
+        .attr('font-size', 10)
+        .attr('text-anchor', 'middle')
+        .attr('dy', 34);
+
+      simulation.on('tick', () => {
+        link
+          .attr('x1', d => d.source.x)
+          .attr('y1', d => d.source.y)
+          .attr('x2', d => d.target.x)
+          .attr('y2', d => d.target.y);
+
+        linkLabel
+          .attr('x', d => (d.source.x + d.target.x) / 2)
+          .attr('y', d => (d.source.y + d.target.y) / 2);
+
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
       });
     }
 
+    function drag(simulation) {
+      function dragstarted(event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+      }
+      function dragged(event, d) {
+        d.fx = event.x; d.fy = event.y;
+      }
+      function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null; d.fy = null;
+      }
+      return d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended);
+    }
+
+    function renderTable(rows) {
+      const host = document.getElementById('tableHost');
+      if (!rows || !rows.length) { host.innerHTML = '<div class="muted">行がありません</div>'; return; }
+      const cols = [...new Set(rows.flatMap(r => Object.keys(r)))];
+      let html = '<table><thead><tr>' + cols.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+      rows.forEach(r => {
+        html += '<tr>' + cols.map(c => `<td>${escapeHtml(String(r[c] ?? ''))}</td>`).join('') + '</tr>';
+      });
+      html += '</tbody></table>';
+      host.innerHTML = html;
+    }
+
+    function colorByLabel(label) {
+      const colors = { Program:'#38bdf8', Route:'#a78bfa', Table:'#22c55e', Column:'#f59e0b', API:'#ef4444', Node:'#94a3b8' };
+      return colors[label] || '#38bdf8';
+    }
+    function truncate(s, n) { return s && s.length > n ? s.slice(0, n-1) + '…' : s; }
+    function sanitizeMermaidId(id) { return String(id || 'node').replace(/[^a-zA-Z0-9_]/g, '_'); }
+    function escapeMermaidLabel(s) { return String(s || '').replace(/"/g, "'").replace(/\[/g, '(').replace(/\]/g, ')'); }
+    function escapeHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
     function showRaw() {
       if (!lastResult) return;
       document.getElementById('output').textContent = JSON.stringify(lastResult, null, 2);
