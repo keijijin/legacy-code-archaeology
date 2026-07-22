@@ -201,7 +201,7 @@
                       <button class="secondary" onclick="resetDashboardD3View()">Reset View</button>
                     </div>
                   </div>
-                  <div class="row muted" style="font-size:.75rem; margin-bottom:.4rem;">凡例: <span style="color:#38bdf8;">● Program</span> <span style="color:#a78bfa;">● Route</span> <span style="color:#22c55e;">● Table</span> <span style="color:#f59e0b;">● Column</span> <span style="color:#ef4444;">● API</span> <span style="color:#94a3b8;">● Node</span> / エッジ: <span style="color:#64748b;">― relation</span></div>
+                  <div class="row muted" style="font-size:.75rem; margin-bottom:.4rem;">凡例: <span style="color:#38bdf8;">● Program</span> <span style="color:#a78bfa;">● Route</span> <span style="color:#22c55e;">● Table</span> <span style="color:#f59e0b;">● Column</span> <span style="color:#ef4444;">● API</span> <span style="color:#94a3b8;">● Node</span> / エッジ: <span style="color:#64748b;">― relation</span> / ダブルクリック: ピン留め</div>
                   <div class="host"><svg id="dashboardD3Graph"></svg></div>
                 </div>
 
@@ -602,7 +602,7 @@ LIMIT 200</textarea>
       const link = root.append('g').attr('stroke','#64748b').attr('stroke-opacity',0.8).selectAll('line').data(validLinks).join('line').attr('stroke-width',1.5);
       const linkLabel = root.append('g').selectAll('text').data(validLinks).join('text').attr('fill','#94a3b8').attr('font-size',9).text(d => d.type);
       const node = root.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer').call(drag(simulation));
-      node.append('circle').attr('r',20).attr('fill',d => colorByLabel(d.label)).attr('stroke','#0b1220').attr('stroke-width',2).on('click',(_,d)=>showDashboardNodeDetail(d));
+      node.append('circle').attr('r',20).attr('fill',d => colorByLabel(d.label)).attr('stroke',d => d.isPinned ? '#f8fafc' : '#0b1220').attr('stroke-width',d => d.isPinned ? 4 : 2).on('click',(_,d)=>showDashboardNodeDetail(d)).on('dblclick', (_, d) => toggleDashboardNodePin(d, simulation));
       node.append('text').text(d => truncate(d.name || d.id, 18)).attr('fill','#e2e8f0').attr('font-size',10).attr('text-anchor','middle').attr('dy',34);
       simulation.on('tick', () => {
         link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
@@ -615,6 +615,23 @@ LIMIT 200</textarea>
       if (dashboardD3Zoom) {
         svg.transition().duration(250).call(dashboardD3Zoom.transform, d3.zoomIdentity);
       }
+    }
+
+    function toggleDashboardNodePin(node, simulation) {
+      node.isPinned = !node.isPinned;
+      if (node.isPinned) {
+        node.fx = node.x;
+        node.fy = node.y;
+        setStatus(`ノード固定: ${node.name || node.id}`);
+      } else {
+        node.fx = null;
+        node.fy = null;
+        setStatus(`ノード固定解除: ${node.name || node.id}`);
+      }
+      simulation.alpha(0.3).restart();
+      d3.select('#dashboardD3Graph').selectAll('circle')
+        .attr('stroke', d => d.isPinned ? '#f8fafc' : '#0b1220')
+        .attr('stroke-width', d => d.isPinned ? 4 : 2);
     }
     function drag(simulation) {
       function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
@@ -760,7 +777,7 @@ LIMIT 200</textarea>
         const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/summary`).catch(() => null);
         const summary = document.getElementById('projectAutoSummary');
         if (summary && body) {
-          summary.textContent = `自動サマリ: assets=${body.assetCount ?? 0}, rules=${body.ruleCount ?? 0}, jobs=${body.jobCount ?? 0}, latest=${body.latestJobStatus ?? '-'}`;
+          summary.textContent = `自動サマリ: assets=${body.assetCount ?? 0}, rules=${body.ruleCount ?? 0}, jobs=${body.jobCount ?? 0}, graphNodes=${body.graphNodeCount ?? 0}, graphEdges=${body.graphEdgeCount ?? 0}, latest=${body.latestJobStatus ?? '-'}`;
         }
       } catch (_) {}
     }

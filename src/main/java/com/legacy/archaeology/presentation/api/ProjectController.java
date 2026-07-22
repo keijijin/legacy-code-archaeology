@@ -10,6 +10,7 @@ import com.legacy.archaeology.domain.analysis.AnalysisJobRepository;
 import com.legacy.archaeology.domain.assets.AssetRepository;
 import com.legacy.archaeology.domain.knowledge.BusinessRuleRepository;
 import com.legacy.archaeology.domain.projects.ProjectRepository;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class ProjectController {
     private final AssetRepository assetRepository;
     private final BusinessRuleRepository businessRuleRepository;
     private final AnalysisJobRepository analysisJobRepository;
+    private final Neo4jClient neo4jClient;
 
     /** プロジェクト作成 */
     @PostMapping
@@ -67,11 +69,23 @@ public class ProjectController {
         java.util.List<JobDto.Response> jobs = analysisJobRepository.findAllByProjectIdOrderByCreatedAtDesc(projectId).stream()
                 .map(IngestAssetUseCase::toJobResponse)
                 .toList();
+        long graphNodeCount = neo4jClient.query("MATCH (n) WHERE n.projectId = $projectId RETURN count(n) AS count")
+                .bind(projectId).to("projectId")
+                .fetchAs(Long.class)
+                .one()
+                .orElse(0L);
+        long graphEdgeCount = neo4jClient.query("MATCH (a)-[r]->(b) WHERE a.projectId = $projectId AND b.projectId = $projectId RETURN count(r) AS count")
+                .bind(projectId).to("projectId")
+                .fetchAs(Long.class)
+                .one()
+                .orElse(0L);
         java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
         body.put("projectId", projectId);
         body.put("assetCount", assetCount);
         body.put("ruleCount", ruleCount);
         body.put("jobCount", jobs.size());
+        body.put("graphNodeCount", graphNodeCount);
+        body.put("graphEdgeCount", graphEdgeCount);
         body.put("latestJobStatus", jobs.isEmpty() ? null : jobs.get(0).getStatus());
         return ResponseEntity.ok(body);
     }
