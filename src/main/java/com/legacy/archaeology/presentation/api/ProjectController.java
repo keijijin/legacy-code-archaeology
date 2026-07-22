@@ -6,6 +6,9 @@ import com.legacy.archaeology.application.dto.ProjectDto;
 import com.legacy.archaeology.application.usecases.CreateProjectUseCase;
 import com.legacy.archaeology.application.usecases.IngestAssetUseCase;
 import com.legacy.archaeology.application.usecases.SubmitAnalysisJobUseCase;
+import com.legacy.archaeology.domain.analysis.AnalysisJobRepository;
+import com.legacy.archaeology.domain.assets.AssetRepository;
+import com.legacy.archaeology.domain.knowledge.BusinessRuleRepository;
 import com.legacy.archaeology.domain.projects.ProjectRepository;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -24,6 +27,9 @@ public class ProjectController {
     private final IngestAssetUseCase ingestAssetUseCase;
     private final SubmitAnalysisJobUseCase submitAnalysisJobUseCase;
     private final ProjectRepository projectRepository;
+    private final AssetRepository assetRepository;
+    private final BusinessRuleRepository businessRuleRepository;
+    private final AnalysisJobRepository analysisJobRepository;
 
     /** プロジェクト作成 */
     @PostMapping
@@ -51,6 +57,23 @@ public class ProjectController {
                 .map(CreateProjectUseCase::toResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    /** プロジェクトサマリ取得 */
+    @GetMapping("/{projectId}/summary")
+    public ResponseEntity<java.util.Map<String, Object>> summary(@PathVariable String projectId) {
+        long assetCount = assetRepository.findAllByProjectId(projectId).size();
+        long ruleCount = businessRuleRepository.findAllByProjectId(projectId).size();
+        java.util.List<JobDto.Response> jobs = analysisJobRepository.findAllByProjectIdOrderByCreatedAtDesc(projectId).stream()
+                .map(IngestAssetUseCase::toJobResponse)
+                .toList();
+        java.util.Map<String, Object> body = new java.util.LinkedHashMap<>();
+        body.put("projectId", projectId);
+        body.put("assetCount", assetCount);
+        body.put("ruleCount", ruleCount);
+        body.put("jobCount", jobs.size());
+        body.put("latestJobStatus", jobs.isEmpty() ? null : jobs.get(0).getStatus());
+        return ResponseEntity.ok(body);
     }
 
     /** 資産取込 */

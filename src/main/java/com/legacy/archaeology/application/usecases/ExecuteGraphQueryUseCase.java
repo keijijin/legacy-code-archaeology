@@ -188,11 +188,18 @@ public class ExecuteGraphQueryUseCase {
         participants.forEach((id, label) ->
                 sb.append("    participant ").append(id).append(" as ").append(escapeMermaid(label)).append("\n"));
 
-        sb.append("    Note over ");
         if (!participants.isEmpty()) {
             String first = participants.keySet().iterator().next();
             String last = participants.keySet().stream().reduce((a, b) -> b).orElse(first);
-            sb.append(first).append(",").append(last).append(": Generated from knowledge graph").append("\n");
+            sb.append("    Note over ")
+                    .append(first)
+                    .append(",")
+                    .append(last)
+                    .append(": Generated from knowledge graph")
+                    .append("\n");
+        } else {
+            sb.append("    participant System as System\n")
+                    .append("    Note over System: no sequence data\n");
         }
 
         int count = 0;

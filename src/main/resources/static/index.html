@@ -757,15 +757,10 @@ LIMIT 200</textarea>
     async function loadProjectAutoSummary() {
       if (!selectedProject) return;
       try {
-        const [rules, jobs] = await Promise.all([
-          api(`/api/projects/${encodeURIComponent(selectedProject.id)}/rules`).catch(() => []),
-          api(`/api/projects/${encodeURIComponent(selectedProject.id)}/jobs`).catch(() => [])
-        ]);
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/summary`).catch(() => null);
         const summary = document.getElementById('projectAutoSummary');
-        if (summary) {
-          const ruleCount = Array.isArray(rules) ? rules.length : 0;
-          const jobCount = Array.isArray(jobs) ? jobs.length : 0;
-          summary.textContent = `自動サマリ: rules=${ruleCount}, jobs=${jobCount}`;
+        if (summary && body) {
+          summary.textContent = `自動サマリ: assets=${body.assetCount ?? 0}, rules=${body.ruleCount ?? 0}, jobs=${body.jobCount ?? 0}, latest=${body.latestJobStatus ?? '-'}`;
         }
       } catch (_) {}
     }
