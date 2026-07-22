@@ -4,181 +4,89 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>レガシーコード考古学 | Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
   <style>
     :root {
-      --bg: #0b1220;
-      --card: #111827;
-      --panel: #1e293b;
-      --text: #e5e7eb;
-      --muted: #94a3b8;
-      --accent: #38bdf8;
-      --ok: #22c55e;
-      --warn: #f59e0b;
-      --err: #ef4444;
-      --border: #334155;
+      --bg:#0b1220; --card:#111827; --panel:#1e293b; --text:#e5e7eb; --muted:#94a3b8;
+      --accent:#38bdf8; --ok:#22c55e; --warn:#f59e0b; --err:#ef4444; --border:#334155;
     }
     * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
-      color: var(--text);
-      background: linear-gradient(180deg, #0b1220 0%, #111827 100%);
-      min-height: 100vh;
+    body { margin:0; font-family:ui-sans-serif,system-ui,-apple-system,sans-serif; color:var(--text); background:linear-gradient(180deg,#0b1220,#111827); min-height:100vh; }
+    header { padding:1rem 1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap; }
+    h1 { margin:0; font-size:1.15rem; }
+    main { max-width:1500px; margin:0 auto; padding:1.25rem; }
+    .muted { color:var(--muted); }
+    .row { display:flex; gap:.75rem; flex-wrap:wrap; align-items:center; }
+    .grid-2 { display:grid; grid-template-columns: 320px 1fr; gap:1rem; }
+    @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } }
+    .panel, .card { background:rgba(30,41,59,.92); border:1px solid var(--border); border-radius:1rem; padding:1rem; }
+    .badge { display:inline-block; padding:.15rem .55rem; border-radius:999px; border:1px solid var(--border); background:#0b1220; font-size:.75rem; color:var(--muted); }
+    .badge.ok { color:var(--ok); border-color:rgba(34,197,94,.4); }
+    .badge.info { color:var(--accent); border-color:rgba(56,189,248,.4); }
+    .badge.warn { color:var(--warn); border-color:rgba(245,158,11,.4); }
+    .badge.err { color:var(--err); border-color:rgba(239,68,68,.4); }
+    .nav a { color:var(--accent); text-decoration:none; margin-right:.8rem; }
+    input, select, button, textarea {
+      background:#0b1220; color:var(--text); border:1px solid var(--border); border-radius:.6rem; padding:.62rem .8rem; font-size:.88rem;
     }
-    header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-    }
-    h1 { margin: 0; font-size: 1.15rem; }
-    main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
-    .row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: center; }
-    .muted { color: var(--muted); }
-    .panel, .card {
-      background: rgba(30, 41, 59, 0.9);
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      padding: 1.25rem;
-    }
-    .badge {
-      display: inline-block;
-      padding: .15rem .55rem;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #0b1220;
-      font-size: .75rem;
-      color: var(--muted);
-    }
-    .badge.ok { color: var(--ok); border-color: rgba(34,197,94,.4); }
-    .badge.warn { color: var(--warn); border-color: rgba(245,158,11,.4); }
-    .badge.err { color: var(--err); border-color: rgba(239,68,68,.4); }
-    .badge.info { color: var(--accent); border-color: rgba(56,189,248,.4); }
-    button {
-      background: #0369a1;
-      color: var(--text);
-      border: 1px solid #0284c7;
-      border-radius: .6rem;
-      padding: .65rem .9rem;
-      font-size: .88rem;
-      cursor: pointer;
-    }
-    button.secondary { background: #334155; border-color: #475569; }
-    button:disabled { opacity: .5; cursor: not-allowed; }
-    input, select {
-      background: #0b1220;
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: .6rem;
-      padding: .6rem .8rem;
-      font-size: .9rem;
-    }
-    .nav a { color: var(--accent); text-decoration: none; margin-right: 1rem; }
-    .status { min-height: 1.3rem; color: var(--accent); margin: .5rem 0 1rem; }
-    pre {
-      background: #0b1220;
-      border: 1px solid var(--border);
-      border-radius: .75rem;
-      padding: 1rem;
-      font-size: .8rem;
-      overflow: auto;
-      max-height: 300px;
-    }
-    .section-title { margin: 1.25rem 0 .5rem; font-size: .95rem; }
-    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-    @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
-    .project-list { max-height: 280px; overflow: auto; }
-    .project-item {
-      padding: .6rem .8rem;
-      border: 1px solid var(--border);
-      border-radius: .5rem;
-      margin-bottom: .4rem;
-      cursor: pointer;
-    }
-    .project-item:hover { border-color: var(--accent); }
-    .project-item.selected { border-color: var(--accent); background: rgba(56,189,248,.08); }
-    .project-item .pname { font-weight: 600; }
-    .project-item .pid { font-size: .72rem; color: var(--muted); }
-    .step {
-      border: 1px solid var(--border);
-      border-radius: .75rem;
-      margin-bottom: .7rem;
-      overflow: hidden;
-    }
-    .step-head {
-      padding: .7rem 1rem;
-      background: rgba(15,23,42,.6);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: .6rem;
-    }
-    .step-num {
-      width: 1.7rem; height: 1.7rem;
-      border-radius: 999px;
-      display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--border);
-      font-size: .8rem;
-      color: var(--muted);
-    }
-    .step.done .step-num { border-color: var(--ok); color: var(--ok); }
-    .step.active .step-num { border-color: var(--accent); color: var(--accent); background: rgba(56,189,248,.12); }
-    .step-body { padding: 0 1rem 1rem; display: none; }
-    .step.open .step-body { display: block; }
-    .result-card {
-      border: 1px solid var(--border);
-      border-radius: .6rem;
-      padding: .85rem 1rem;
-      margin-bottom: .6rem;
-    }
-    .result-card h4 { margin: 0 0 .3rem; font-size: .9rem; }
-    .result-card .meta { font-size: .72rem; color: var(--muted); margin-bottom: .4rem; }
-    .evidence { background: #0b1220; padding: .4rem .6rem; border-radius: .4rem; font-size: .75rem; color: var(--muted); }
-    .tree-node {
-      padding: .4rem .6rem;
-      border-left: 2px solid var(--border);
-      margin-left: .8rem;
-    }
-    .tree-node.root { border-left: none; margin-left: 0; padding-left: 0; }
-    .mermaid-container {
-      background: #0b1220;
-      border: 1px solid var(--border);
-      border-radius: .6rem;
-      padding: 1rem;
-      overflow: auto;
-    }
-    .metric {
-      display: inline-block;
-      padding: .3rem .7rem;
-      background: #0b1220;
-      border: 1px solid var(--border);
-      border-radius: .4rem;
-      font-size: .8rem;
-      margin-right: .4rem;
-    }
+    button { background:#0369a1; border-color:#0284c7; cursor:pointer; }
+    button.secondary { background:#334155; border-color:#475569; }
+    textarea { width:100%; min-height:110px; font-family:ui-monospace,SFMono-Regular,monospace; }
+    .status { min-height:1.25rem; color:var(--accent); margin:.45rem 0 .8rem; }
+    .project-list { max-height:260px; overflow:auto; }
+    .project-item { padding:.6rem .75rem; border:1px solid var(--border); border-radius:.55rem; margin-bottom:.45rem; cursor:pointer; }
+    .project-item:hover { border-color:var(--accent); }
+    .project-item.selected { border-color:var(--accent); background:rgba(56,189,248,.08); }
+    .project-item .pname { font-weight:600; }
+    .project-item .pid { font-size:.72rem; color:var(--muted); }
+    .step { border:1px solid var(--border); border-radius:.75rem; margin-bottom:.75rem; overflow:hidden; }
+    .step-head { padding:.75rem .95rem; background:rgba(15,23,42,.6); cursor:pointer; display:flex; align-items:center; gap:.7rem; }
+    .step-num { width:1.8rem; height:1.8rem; border-radius:999px; display:flex; align-items:center; justify-content:center; border:1px solid var(--border); color:var(--muted); font-size:.8rem; }
+    .step.active .step-num { border-color:var(--accent); color:var(--accent); background:rgba(56,189,248,.12); }
+    .step.done .step-num { border-color:var(--ok); color:var(--ok); }
+    .step-body { display:none; padding:0 1rem 1rem; }
+    .step.open .step-body { display:block; }
+    .tabs { display:flex; gap:.5rem; flex-wrap:wrap; margin:.75rem 0; }
+    .tab { padding:.42rem .7rem; border:1px solid var(--border); border-radius:.5rem; background:#0b1220; color:var(--muted); cursor:pointer; }
+    .tab.active { border-color:var(--accent); color:var(--accent); background:rgba(56,189,248,.08); }
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+    .result-card { border:1px solid var(--border); border-radius:.6rem; padding:.8rem .9rem; margin-bottom:.6rem; }
+    .result-card h4 { margin:0 0 .3rem; font-size:.92rem; }
+    .meta { font-size:.73rem; color:var(--muted); margin-bottom:.4rem; }
+    .evidence { background:#0b1220; border-radius:.45rem; padding:.4rem .6rem; font-size:.75rem; color:var(--muted); }
+    .tree-node { padding:.35rem .5rem; border-left:2px solid var(--border); margin-left:.65rem; cursor:pointer; }
+    .tree-node.root { border-left:none; margin-left:0; padding-left:0; }
+    .tree-node:hover { background:rgba(56,189,248,.06); }
+    .tree-node.selected { background:rgba(56,189,248,.15); border-color:var(--accent); }
+    .viz-layout { display:grid; grid-template-columns: 320px 1fr 320px; gap:1rem; }
+    @media (max-width: 1300px) { .viz-layout { grid-template-columns: 1fr; } }
+    .host { background:#0b1220; border:1px solid var(--border); border-radius:.6rem; min-height:360px; overflow:auto; }
+    #dashboardD3Graph { width:100%; height:520px; display:block; }
+    pre { white-space:pre-wrap; word-break:break-word; background:#0b1220; border:1px solid var(--border); border-radius:.75rem; padding:1rem; max-height:300px; overflow:auto; font-size:.8rem; }
+    table { width:100%; border-collapse:collapse; font-size:.82rem; }
+    th, td { border-bottom:1px solid var(--border); padding:.45rem .5rem; text-align:left; vertical-align:top; }
   </style>
 </head>
 <body>
   <header>
     <div>
       <h1>レガシーコード考古学</h1>
-      <div class="muted">Evidence First / IR / Knowledge Graph / Human in the Loop</div>
+      <div class="muted">投入 → 解析 → 可視化 → 改善案 を 1 画面で確認</div>
     </div>
     <div class="nav">
       <a href="/">Dashboard</a>
-      <a href="/review/">Review UI</a>
       <a href="/impact/">Impact UI</a>
+      <a href="/review/">Review UI</a>
       <a href="/api/health" target="_blank">Health</a>
     </div>
   </header>
 
   <main>
-    <!-- Hero / Health -->
-    <div class="row" style="justify-content: space-between; margin-bottom: 1rem;">
+    <div class="row" style="justify-content:space-between; margin-bottom:1rem;">
       <div>
-        <span class="badge" id="envBadge">OpenShift</span>
+        <span class="badge">OpenShift</span>
         <span class="badge info" id="healthBadge">health: checking...</span>
       </div>
       <div class="row">
@@ -187,127 +95,167 @@
     </div>
 
     <div class="grid-2">
-      <!-- Left: Project Selection -->
-      <section class="panel">
+      <aside class="panel">
         <h3 style="margin-top:0;">プロジェクト選択</h3>
-        <div class="row" style="margin-bottom: .6rem;">
-          <input id="newProjectName" placeholder="新規プロジェクト名" style="min-width: 180px;" />
+        <div class="row" style="margin-bottom:.6rem;">
+          <input id="newProjectName" placeholder="新規プロジェクト名" style="min-width:180px;" />
           <button onclick="createProject()">作成</button>
         </div>
         <div class="status" id="listStatus"></div>
-        <div class="project-list" id="projectList"></div>
-      </section>
+        <div id="projectList" class="project-list"></div>
+      </aside>
 
-      <!-- Right: Selected Project Info -->
-      <section class="panel">
-        <h3 style="margin-top:0;">選択中のプロジェクト</h3>
-        <div id="selectedInfo">
-          <div class="muted">プロジェクトが選択されていません</div>
+      <section>
+        <div class="panel" style="margin-bottom:1rem;">
+          <h3 style="margin-top:0;">選択中のプロジェクト</h3>
+          <div id="selectedInfo" class="muted">プロジェクトが選択されていません</div>
         </div>
-        <div class="status" id="projectStatus"></div>
-      </section>
-    </div>
 
-    <!-- Analysis Workflow -->
-    <h3 class="section-title">分析ワークフロー</h3>
-    <div id="workflow" style="display: none;">
-      <div class="step" data-step="1">
-        <div class="step-head" onclick="toggleStep(1)">
-          <div class="step-num">1</div>
-          <div style="flex:1;">
-            <strong>レガシー資材の投入</strong>
-            <div class="muted" style="font-size:.75rem;">サンプル資産または実ファイルを投入</div>
+        <div id="workflow" style="display:none;">
+          <div class="step" data-step="1">
+            <div class="step-head" onclick="toggleStep(1)"><div class="step-num">1</div><div><strong>レガシー資材の投入</strong><div class="muted" style="font-size:.75rem;">サンプルまたは任意資材</div></div></div>
+            <div class="step-body">
+              <div class="row">
+                <button onclick="ingestSamples()">サンプル資材を投入</button>
+                <button class="secondary" onclick="showIngestForm()">任意資材を投入</button>
+              </div>
+              <div id="ingestForm" style="display:none; margin-top:.75rem;">
+                <div class="row">
+                  <select id="assetType">
+                    <option value="JAVA_SOURCE">JAVA_SOURCE</option>
+                    <option value="CAMEL_ROUTE">CAMEL_ROUTE</option>
+                    <option value="SQL_DDL">SQL_DDL</option>
+                    <option value="YAML_CONFIG">YAML_CONFIG</option>
+                  </select>
+                  <input id="sourcePath" placeholder="classpath:... または src/..." style="min-width:320px;" />
+                  <button onclick="ingestAsset()">投入</button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div>▾</div>
-        </div>
-        <div class="step-body">
-          <div class="row">
-            <button onclick="ingestSamples()">サンプル資材を投入</button>
-            <button class="secondary" onclick="showIngestForm()">実ファイルを投入</button>
-            <button class="secondary" onclick="loadAssets()">投入済みアセット一覧</button>
+
+          <div class="step" data-step="2">
+            <div class="step-head" onclick="toggleStep(2)"><div class="step-num">2</div><div><strong>静的解析の実行</strong><div class="muted" style="font-size:.75rem;">IR と知識グラフを生成</div></div></div>
+            <div class="step-body">
+              <div class="row">
+                <button onclick="runAnalysis()">静的解析を実行</button>
+                <button class="secondary" onclick="loadJobs()">ジョブ状態確認</button>
+              </div>
+            </div>
           </div>
-          <div id="ingestForm" style="display:none; margin-top:.6rem;">
-            <div class="row">
-              <select id="assetType">
-                <option value="JAVA_SOURCE">JAVA_SOURCE</option>
-                <option value="CAMEL_ROUTE">CAMEL_ROUTE</option>
-                <option value="SQL_DDL">SQL_DDL</option>
-                <option value="YAML_CONFIG">YAML_CONFIG</option>
-              </select>
-              <input id="sourcePath" placeholder="ソースパス（例: src/main/java/...）" style="min-width: 280px;" />
-              <button onclick="ingestAsset()">投入</button>
+
+          <div class="step" data-step="3">
+            <div class="step-head" onclick="toggleStep(3)"><div class="step-num">3</div><div><strong>分析結果の可視化</strong><div class="muted" style="font-size:.75rem;">Mermaid / D3 / ツリー / sequenceDiagram</div></div></div>
+            <div class="step-body">
+              <div class="row">
+                <button onclick="loadBusinessRules()">業務ルール候補を表示</button>
+                <button class="secondary" onclick="loadDashboardGraph()">依存グラフを表示</button>
+                <button class="secondary" onclick="generateSequenceDiagram()">ダイアログ生成</button>
+                <button class="secondary" onclick="goImpact()">Impact UI で深掘り</button>
+              </div>
+
+              <div class="tabs">
+                <div class="tab active" data-tab="rules" onclick="switchDashboardTab('rules')">業務ルール</div>
+                <div class="tab" data-tab="tree" onclick="switchDashboardTab('tree')">関係ツリー</div>
+                <div class="tab" data-tab="d3" onclick="switchDashboardTab('d3')">D3 力学グラフ</div>
+                <div class="tab" data-tab="mermaid" onclick="switchDashboardTab('mermaid')">Mermaid flowchart TD</div>
+                <div class="tab" data-tab="sequence" onclick="switchDashboardTab('sequence')">sequenceDiagram</div>
+                <div class="tab" data-tab="table" onclick="switchDashboardTab('table')">クエリ結果表</div>
+              </div>
+
+              <div class="viz-layout">
+                <div class="panel tab-panel active" id="dashboard-tab-rules">
+                  <h3>業務ルール候補</h3>
+                  <div id="rulesArea" class="muted">まだ取得していません</div>
+                </div>
+
+                <div class="panel tab-panel" id="dashboard-tab-tree">
+                  <h3>関係ツリー</h3>
+                  <div id="dashboardTreeArea"></div>
+                </div>
+
+                <div class="panel tab-panel" id="dashboard-tab-d3">
+                  <h3>D3.js による力学グラフ</h3>
+                  <div class="host"><svg id="dashboardD3Graph"></svg></div>
+                </div>
+
+                <div class="panel tab-panel" id="dashboard-tab-mermaid">
+                  <h3>Mermaid グラフの自動生成</h3>
+                  <div id="dashboardMermaidHost" class="host"></div>
+                  <pre id="dashboardMermaidSource"></pre>
+                </div>
+
+                <div class="panel tab-panel" id="dashboard-tab-sequence">
+                  <h3>sequenceDiagram</h3>
+                  <div id="dashboardSequenceHost" class="host"></div>
+                  <pre id="dashboardSequenceSource"></pre>
+                </div>
+
+                <div class="panel tab-panel" id="dashboard-tab-table">
+                  <h3>Neo4j クエリ結果</h3>
+                  <div id="dashboardTableHost"></div>
+                </div>
+
+                <div class="panel">
+                  <h3>フィルタ / ノード詳細</h3>
+                  <div class="row" style="margin-bottom:.6rem;">
+                    <select id="dashboardFilterType" onchange="applyDashboardFilters()"><option value="">全 nodeType</option></select>
+                    <input id="dashboardFilterText" placeholder="名前で検索" oninput="applyDashboardFilters()" />
+                  </div>
+                  <div id="dashboardNodeDetail" class="muted">ノードをクリックすると詳細が表示されます。</div>
+                  <hr style="border-color:var(--border); margin:1rem 0;" />
+                  <h3>Neo4j 直接クエリ API</h3>
+                  <textarea id="dashboardCypherInput">MATCH (a)-[r]->(b)
+WHERE a.projectId = $projectId AND b.projectId = $projectId
+RETURN a.id AS sourceId,
+       labels(a)[0] AS sourceLabel,
+       coalesce(a.className, a.routeId, a.tableName, a.name, a.id) AS sourceName,
+       coalesce(a.sourcePath, '') AS sourceSourcePath,
+       b.id AS targetId,
+       labels(b)[0] AS targetLabel,
+       coalesce(b.className, b.routeId, b.tableName, b.name, b.id) AS targetName,
+       coalesce(b.sourcePath, '') AS targetSourcePath,
+       type(r) AS relType
+LIMIT 200</textarea>
+                  <div class="row" style="margin-top:.6rem;">
+                    <select id="dashboardQueryMode"><option>GRAPH</option><option>TABLE</option><option>MERMAID</option></select>
+                    <button onclick="runDashboardCypherQuery()">Cypher 実行</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="step" data-step="4">
+            <div class="step-head" onclick="toggleStep(4)"><div class="step-num">4</div><div><strong>改善案の提示</strong><div class="muted" style="font-size:.75rem;">移行課題 / モダナイゼーション</div></div></div>
+            <div class="step-body">
+              <div class="row">
+                <button onclick="loadMigrationIssues()">OpenShift 移行課題</button>
+                <button class="secondary" onclick="loadModernizationPlan()">モダナイゼーション計画</button>
+              </div>
+              <div id="improvementArea" style="margin-top:1rem;"></div>
             </div>
           </div>
         </div>
-      </div>
-
-      <div class="step" data-step="2">
-        <div class="step-head" onclick="toggleStep(2)">
-          <div class="step-num">2</div>
-          <div style="flex:1;">
-            <strong>静的解析の実行</strong>
-            <div class="muted" style="font-size:.75rem;">IR（中間表現）と知識グラフを生成</div>
-          </div>
-          <div>▾</div>
-        </div>
-        <div class="step-body">
-          <div class="row">
-            <button onclick="runAnalysis()">静的解析を実行</button>
-            <button class="secondary" onclick="loadJobs()">ジョブ状態確認</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="step" data-step="3">
-        <div class="step-head" onclick="toggleStep(3)">
-          <div class="step-num">3</div>
-          <div style="flex:1;">
-            <strong>分析結果の可視化</strong>
-            <div class="muted" style="font-size:.75rem;">ダイアログ・関係ツリー・グラフで表示</div>
-          </div>
-          <div>▾</div>
-        </div>
-        <div class="step-body">
-          <div class="row">
-            <button onclick="loadBusinessRules()">業務ルール候補を表示</button>
-            <button class="secondary" onclick="loadImpactAnalysis()">影響分析グラフを表示</button>
-            <button class="secondary" onclick="goReview()">Review UI で詳細確認</button>
-          </div>
-          <div id="visualizationArea" style="margin-top: 1rem;"></div>
-        </div>
-      </div>
-
-      <div class="step" data-step="4">
-        <div class="step-head" onclick="toggleStep(4)">
-          <div class="step-num">4</div>
-          <div style="flex:1;">
-            <strong>改善案の提示</strong>
-            <div class="muted" style="font-size:.75rem;">移行課題とモダナイゼーション案を提示</div>
-          </div>
-          <div>▾</div>
-        </div>
-        <div class="step-body">
-          <div class="row">
-            <button onclick="loadMigrationIssues()">OpenShift 移行課題</button>
-            <button class="secondary" onclick="loadModernizationPlan()">モダナイゼーション計画</button>
-          </div>
-          <div id="improvementArea" style="margin-top: 1rem;"></div>
-        </div>
-      </div>
+      </section>
     </div>
 
     <div class="status" id="globalStatus"></div>
+    <pre id="rawOutput">{}</pre>
   </main>
 
   <script>
+    mermaid.initialize({ startOnLoad:false, theme:'dark' });
     const globalStatus = document.getElementById('globalStatus');
     let selectedProject = null;
+    let dashboardGraph = { nodes: [], edges: [] };
+    let filteredDashboardGraph = { nodes: [], edges: [] };
+    let selectedDashboardNodeEl = null;
 
     function setStatus(msg, isErr) {
       globalStatus.textContent = msg || '';
       globalStatus.style.color = isErr ? 'var(--err)' : 'var(--accent)';
     }
-
     async function api(path, options) {
       const res = await fetch(path, options);
       const text = await res.text();
@@ -316,15 +264,19 @@
       if (!res.ok) throw new Error(typeof body === 'string' ? body : JSON.stringify(body));
       return body;
     }
+    function setRaw(data) { document.getElementById('rawOutput').textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2); }
+    function requireProject() { if (!selectedProject) { setStatus('先にプロジェクトを選択してください', true); return false; } return true; }
 
     async function checkHealth() {
       try {
         const body = await api('/api/health');
-        document.getElementById('healthBadge').textContent = `health: ${body.status || 'UP'}`;
-        document.getElementById('healthBadge').className = 'badge ok';
+        const el = document.getElementById('healthBadge');
+        el.textContent = `health: ${body.status || 'UP'}`;
+        el.className = 'badge ok';
       } catch {
-        document.getElementById('healthBadge').textContent = 'health: DOWN';
-        document.getElementById('healthBadge').className = 'badge err';
+        const el = document.getElementById('healthBadge');
+        el.textContent = 'health: DOWN';
+        el.className = 'badge err';
       }
     }
 
@@ -339,283 +291,370 @@
         document.getElementById('listStatus').textContent = '取得失敗';
       }
     }
-
     function renderProjects(list) {
       const el = document.getElementById('projectList');
       el.innerHTML = '';
-      if (!list.length) {
-        el.innerHTML = '<div class="muted">プロジェクトがありません</div>';
-        return;
-      }
+      if (!list.length) { el.innerHTML = '<div class="muted">プロジェクトがありません</div>'; return; }
       list.forEach(p => {
         const id = p.projectId || p.id;
         const div = document.createElement('div');
         div.className = 'project-item' + (selectedProject && selectedProject.id === id ? ' selected' : '');
-        div.innerHTML = `<div class="pname">${p.name || '(no name)'}</div><div class="pid">${id}</div>`;
+        div.innerHTML = `<div class="pname">${escapeHtml(p.name || '(no name)')}</div><div class="pid">${escapeHtml(id)}</div>`;
         div.onclick = () => selectProject({ id, name: p.name });
         el.appendChild(div);
       });
     }
-
     function selectProject(p) {
       selectedProject = p;
-      const info = document.getElementById('selectedInfo');
-      info.innerHTML = `
-        <div><strong>${p.name || '(no name)'}</strong></div>
-        <div class="muted" style="font-size:.75rem;">${p.id}</div>
-      `;
+      document.getElementById('selectedInfo').innerHTML = `<div><strong>${escapeHtml(p.name || '(no name)')}</strong></div><div class="muted" style="font-size:.75rem;">${escapeHtml(p.id)}</div>`;
       document.getElementById('workflow').style.display = 'block';
-      document.querySelectorAll('.project-item').forEach(el => {
-        el.classList.toggle('selected', el.querySelector('.pid').textContent === p.id);
-      });
+      document.querySelectorAll('.project-item').forEach(el => el.classList.toggle('selected', el.querySelector('.pid').textContent === p.id));
       setStatus(`選択: ${p.name || p.id}`);
       openStep(1);
     }
-
     async function createProject() {
       const name = document.getElementById('newProjectName').value.trim() || ('demo-' + Date.now());
       setStatus('プロジェクト作成中...');
       try {
-        const body = await api('/api/projects', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, description: 'analysis dashboard project' })
-        });
-        setStatus(`作成完了: ${body.projectId}`);
+        const body = await api('/api/projects', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ name, description:'dashboard integrated analysis project' }) });
         await loadProjects();
         selectProject({ id: body.projectId, name });
-      } catch (e) { setStatus('作成失敗', true); }
+        setStatus(`作成完了: ${body.projectId}`);
+        setRaw(body);
+      } catch (e) { setStatus('作成失敗', true); setRaw(String(e.message || e)); }
     }
 
-    // Step 1: Ingest
-    function showIngestForm() {
-      const form = document.getElementById('ingestForm');
-      form.style.display = form.style.display === 'none' ? 'block' : 'none';
-    }
+    function toggleStep(n) { document.querySelector(`.step[data-step="${n}"]`).classList.toggle('open'); }
+    function openStep(n) { document.querySelectorAll('.step').forEach(s => s.classList.remove('active')); const el = document.querySelector(`.step[data-step="${n}"]`); if (el) el.classList.add('open', 'active'); }
+    function markDone(n) { const el = document.querySelector(`.step[data-step="${n}"]`); if (el) el.classList.add('done'); if (n < 4) openStep(n + 1); }
+
+    function showIngestForm() { const el = document.getElementById('ingestForm'); el.style.display = el.style.display === 'none' ? 'block' : 'none'; }
     async function ingestSamples() {
-      if (!selectedProject) return;
+      if (!requireProject()) return;
       const pid = encodeURIComponent(selectedProject.id);
+      const samples = [
+        { assetType: 'JAVA_SOURCE', sourcePath: 'classpath:samples/legacy-customer-system/java/CustomerRegistrationService.java' },
+        { assetType: 'CAMEL_ROUTE', sourcePath: 'classpath:samples/legacy-customer-system/camel/customer-registration-route.xml' },
+        { assetType: 'SQL_DDL', sourcePath: 'classpath:samples/legacy-customer-system/sql/customer_schema.sql' },
+        { assetType: 'YAML_CONFIG', sourcePath: 'classpath:samples/legacy-customer-system/config/application.yml' }
+      ];
       setStatus('サンプル資材を投入中...');
       try {
-        const samples = [
-          { assetType: 'JAVA_SOURCE', sourcePath: 'classpath:samples/legacy-customer-system/java/CustomerRegistrationService.java' },
-          { assetType: 'CAMEL_ROUTE', sourcePath: 'classpath:samples/legacy-customer-system/camel/customer-registration-route.xml' },
-          { assetType: 'SQL_DDL', sourcePath: 'classpath:samples/legacy-customer-system/sql/customer_schema.sql' },
-          { assetType: 'YAML_CONFIG', sourcePath: 'classpath:samples/legacy-customer-system/config/application.yml' }
-        ];
         for (const s of samples) {
-          await api(`/api/projects/${pid}/ingest`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(s)
-          });
+          await api(`/api/projects/${pid}/ingest`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(s) });
         }
-        markDone(1);
-        setStatus('サンプル資材を投入しました');
-      } catch (e) { setStatus('投入失敗', true); }
+        markDone(1); setStatus('サンプル資材を投入しました');
+      } catch (e) { setStatus('投入失敗', true); setRaw(String(e.message || e)); }
     }
     async function ingestAsset() {
-      if (!selectedProject) return;
+      if (!requireProject()) return;
       const pid = encodeURIComponent(selectedProject.id);
       const assetType = document.getElementById('assetType').value;
       const sourcePath = document.getElementById('sourcePath').value.trim();
       if (!sourcePath) return setStatus('ソースパスを入力してください', true);
-      setStatus('資産を投入中...');
       try {
-        await api(`/api/projects/${pid}/ingest`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ assetType, sourcePath })
-        });
-        markDone(1);
-        setStatus('資産を投入しました');
-      } catch (e) { setStatus('投入失敗', true); }
+        const body = await api(`/api/projects/${pid}/ingest`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ assetType, sourcePath }) });
+        markDone(1); setStatus('資産を投入しました'); setRaw(body);
+      } catch (e) { setStatus('投入失敗', true); setRaw(String(e.message || e)); }
     }
-    async function loadAssets() {
-      if (!selectedProject) return;
-      setStatus('アセット一覧取得中...');
-      try {
-        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/assets`);
-        setStatus('取得完了');
-        document.getElementById('visualizationArea').innerHTML = `<pre>${JSON.stringify(body, null, 2)}</pre>`;
-      } catch (e) { setStatus('取得失敗', true); }
-    }
-
-    // Step 2: Analysis
     async function runAnalysis() {
-      if (!selectedProject) return;
-      const pid = encodeURIComponent(selectedProject.id);
-      setStatus('静的解析を実行中...');
+      if (!requireProject()) return;
       try {
-        const body = await api(`/api/projects/${pid}/analyze`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ jobType: 'STATIC_ANALYSIS', forceFullReanalysis: false })
-        });
-        markDone(2);
-        setStatus(`解析ジョブ開始: ${body.jobId || ''}`);
-      } catch (e) { setStatus('解析失敗', true); }
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/analyze`, { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ jobType:'STATIC_ANALYSIS', forceFullReanalysis:false }) });
+        markDone(2); setStatus(`解析ジョブ開始: ${body.jobId || ''}`); setRaw(body);
+      } catch (e) { setStatus('解析失敗', true); setRaw(String(e.message || e)); }
     }
     async function loadJobs() {
-      if (!selectedProject) return;
-      setStatus('ジョブ状態取得中...');
-      try {
-        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/jobs`);
-        document.getElementById('visualizationArea').innerHTML = `<pre>${JSON.stringify(body, null, 2)}</pre>`;
-        setStatus('取得完了');
-      } catch (e) { setStatus('取得失敗', true); }
+      if (!requireProject()) return;
+      try { const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/jobs`); setStatus('ジョブ取得完了'); setRaw(body); }
+      catch (e) { setStatus('取得失敗', true); setRaw(String(e.message || e)); }
     }
 
-    // Step 3: Visualization
     async function loadBusinessRules() {
-      if (!selectedProject) return;
-      setStatus('業務ルール候補を取得中...');
+      if (!requireProject()) return;
       try {
         const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/rules`);
         renderBusinessRules(body);
+        switchDashboardTab('rules');
         markDone(3);
         setStatus('業務ルール候補を取得しました');
-      } catch (e) { setStatus('取得失敗', true); }
+        setRaw(body);
+      } catch (e) { setStatus('取得失敗', true); setRaw(String(e.message || e)); }
     }
-
     function renderBusinessRules(rules) {
-      const area = document.getElementById('visualizationArea');
-      if (!Array.isArray(rules) || !rules.length) {
-        area.innerHTML = '<div class="muted">業務ルール候補がありません</div>';
-        return;
-      }
-      let html = '<h4 style="margin:0 0 .5rem;">業務ルール候補</h4>';
-      rules.forEach(r => {
-        const evidence = r.evidenceIds ? r.evidenceIds.join(', ') : '-';
-        html += `
-          <div class="result-card">
-            <h4>${r.text || r.businessRuleText || '(no text)'}</h4>
-            <div class="meta">信頼度: ${r.confidenceLevel || '-'} | 状態: ${r.reviewStatus || '-'}</div>
-            <div class="evidence">根拠: ${evidence}</div>
-          </div>
-        `;
-      });
-      area.innerHTML = html;
+      const area = document.getElementById('rulesArea');
+      if (!Array.isArray(rules) || !rules.length) { area.innerHTML = '<div class="muted">業務ルール候補がありません</div>'; return; }
+      area.innerHTML = rules.map(r => `
+        <div class="result-card">
+          <h4>${escapeHtml(r.ruleText || r.text || '(no text)')}</h4>
+          <div class="meta">信頼度: ${escapeHtml(r.confidence?.level || r.confidenceLevel || '-')} / 状態: ${escapeHtml(r.reviewStatus || '-')}</div>
+          <div class="evidence">根拠: ${escapeHtml((r.evidenceIds || []).join(', ') || '-')}</div>
+        </div>`).join('');
     }
 
-    async function loadImpactAnalysis() {
-      if (!selectedProject) return;
-      setStatus('影響分析グラフを取得中...');
+    async function loadDashboardGraph() {
+      if (!requireProject()) return;
       try {
-        // 簡易グラフ表示（Mermaid形式のシーケンス図を生成）
-        const mermaid = `
-graph TD
-    A[CustomerRegistrationService] --> B[customer_registration]
-    B --> C[CUSTOMER]
-    B --> D[CUSTOMER_ADDRESS]
-    A --> E[CustomerRegistrationRoute]
-    E --> F[validateCustomer]
-    E --> G[createCustomer]
-        `;
-        const area = document.getElementById('visualizationArea');
-        area.innerHTML = `
-          <h4 style="margin:0 0 .5rem;">依存関係グラフ</h4>
-          <div class="mermaid-container">
-            <pre style="white-space: pre; font-family: monospace;">${mermaid}</pre>
-            <div class="muted" style="margin-top:.5rem; font-size:.75rem;">※ 実際の知識グラフは Neo4j に格納されています</div>
-          </div>
-        `;
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/graph/edges`);
+        dashboardGraph = dedupeGraph({ nodes: body.nodes || [], edges: body.edges || [] });
+        initDashboardFilters(dashboardGraph.nodes);
+        applyDashboardFilters();
         markDone(3);
-        setStatus('グラフを表示しました');
-      } catch (e) { setStatus('取得失敗', true); }
+        switchDashboardTab('d3');
+        setStatus(`依存グラフ取得完了: nodes=${dashboardGraph.nodes.length}, edges=${dashboardGraph.edges.length}`);
+        setRaw(body);
+      } catch (e) { setStatus('グラフ取得失敗', true); setRaw(String(e.message || e)); }
     }
 
-    function goReview() {
-      const q = selectedProject ? `?projectId=${encodeURIComponent(selectedProject.id)}` : '';
-      location.href = `/review/${q}`;
+    async function runDashboardCypherQuery() {
+      if (!requireProject()) return;
+      const cypher = document.getElementById('dashboardCypherInput').value.trim();
+      const mode = document.getElementById('dashboardQueryMode').value;
+      if (!cypher) return setStatus('Cypher を入力してください', true);
+      try {
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/graph/query`, {
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({ cypher, mode, bindProjectId:true })
+        });
+        setRaw(body);
+        if (mode === 'GRAPH') {
+          dashboardGraph = dedupeGraph({ nodes: body.nodes || [], edges: body.edges || [] });
+          initDashboardFilters(dashboardGraph.nodes);
+          applyDashboardFilters();
+          switchDashboardTab('d3');
+        } else if (mode === 'MERMAID') {
+          await renderMermaidInto('dashboardMermaidHost', body.mermaid || 'flowchart TD');
+          document.getElementById('dashboardMermaidSource').textContent = body.mermaid || '';
+          switchDashboardTab('mermaid');
+        } else {
+          renderDashboardTable(body.rows || []);
+          switchDashboardTab('table');
+        }
+        setStatus(`Cypher 実行完了: rows=${body.rowCount ?? 0}`);
+      } catch (e) { setStatus('Cypher 実行失敗', true); setRaw(String(e.message || e)); }
     }
 
-    // Step 4: Improvement
+    function initDashboardFilters(nodes) {
+      const typeSel = document.getElementById('dashboardFilterType');
+      const types = [...new Set(nodes.map(n => n.label || n.nodeType).filter(Boolean))];
+      typeSel.innerHTML = '<option value="">全 nodeType</option>' + types.map(t => `<option>${escapeHtml(t)}</option>`).join('');
+      document.getElementById('dashboardFilterText').value = '';
+    }
+    function applyDashboardFilters() {
+      const typeVal = document.getElementById('dashboardFilterType').value;
+      const textVal = document.getElementById('dashboardFilterText').value.trim().toLowerCase();
+      const nodes = dashboardGraph.nodes.filter(n => {
+        const nodeType = n.label || n.nodeType || '';
+        const nodeName = n.name || '';
+        return (!typeVal || nodeType === typeVal) && (!textVal || nodeName.toLowerCase().includes(textVal));
+      });
+      const nodeIds = new Set(nodes.map(n => n.id || n.nodeId));
+      const edges = dashboardGraph.edges.filter(e => nodeIds.has(edgeSourceId(e)) && nodeIds.has(edgeTargetId(e)));
+      filteredDashboardGraph = dedupeGraph({ nodes, edges });
+      renderDashboardTree(filteredDashboardGraph);
+      renderDashboardD3(filteredDashboardGraph);
+      renderDashboardMermaid();
+      renderDashboardTable([]);
+    }
+
+    function renderDashboardTree(graph) {
+      const area = document.getElementById('dashboardTreeArea');
+      area.innerHTML = '';
+      if (!graph.nodes.length) { area.innerHTML = '<div class="muted">ノードがありません</div>'; return; }
+      const grouped = {};
+      graph.nodes.forEach(n => { const g = n.label || n.nodeType || 'Node'; (grouped[g] || (grouped[g] = [])).push(n); });
+      Object.keys(grouped).sort().forEach(group => {
+        const header = document.createElement('div');
+        header.style.cssText = 'margin:.35rem 0 .2rem; font-size:.8rem; color:var(--muted);';
+        header.textContent = group;
+        area.appendChild(header);
+        grouped[group].forEach(n => {
+          const div = document.createElement('div');
+          div.className = 'tree-node root';
+          div.innerHTML = `<div><strong>${escapeHtml(n.name || n.id)}</strong></div><div class="meta">${escapeHtml(n.id || '')}</div>`;
+          div.onclick = () => showDashboardNodeDetail(n, div);
+          area.appendChild(div);
+        });
+      });
+    }
+    function showDashboardNodeDetail(node, el) {
+      if (selectedDashboardNodeEl) selectedDashboardNodeEl.classList.remove('selected');
+      if (el) { el.classList.add('selected'); selectedDashboardNodeEl = el; }
+      document.getElementById('dashboardNodeDetail').innerHTML = `
+        <div><strong>${escapeHtml(node.name || node.id || '(no name)')}</strong></div>
+        <div class="meta">label=${escapeHtml(node.label || node.nodeType || '-')} / id=${escapeHtml(node.id || node.nodeId || '-')}</div>
+        <pre>${escapeHtml(JSON.stringify(node.properties || {}, null, 2))}</pre>`;
+    }
+
+    async function renderDashboardMermaid() {
+      const src = buildMermaidFromGraph(filteredDashboardGraph.nodes.length ? filteredDashboardGraph : dashboardGraph);
+      document.getElementById('dashboardMermaidSource').textContent = src;
+      await renderMermaidInto('dashboardMermaidHost', src);
+    }
+    async function renderMermaidInto(hostId, source) {
+      const host = document.getElementById(hostId);
+      host.innerHTML = '<div class="muted" style="padding:1rem;">描画中...</div>';
+      try {
+        const { svg } = await mermaid.render(hostId + '-' + Date.now(), source);
+        host.innerHTML = svg;
+      } catch (e) {
+        host.innerHTML = `<pre>${escapeHtml(source)}</pre>`;
+        setStatus('Mermaid 描画失敗。ソースを表示しています。', true);
+      }
+    }
+    function buildMermaidFromGraph(graph) {
+      const lines = ['flowchart TD'];
+      (graph.nodes || []).forEach(n => lines.push(`    ${sanitizeMermaidId(n.id)}["${escapeMermaidLabel(n.name || n.id)}"]`));
+      (graph.edges || []).forEach(e => lines.push(`    ${sanitizeMermaidId(edgeSourceId(e))} -->|${escapeMermaidLabel(e.type || 'RELATED')}| ${sanitizeMermaidId(edgeTargetId(e))}`));
+      return lines.join('\n');
+    }
+
+    async function generateSequenceDiagram() {
+      if (!requireProject()) return;
+      try {
+        // graph/edges を利用して sequenceDiagram を簡易生成
+        if (!dashboardGraph.nodes.length) {
+          const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/graph/edges`);
+          dashboardGraph = dedupeGraph({ nodes: body.nodes || [], edges: body.edges || [] });
+          initDashboardFilters(dashboardGraph.nodes);
+          applyDashboardFilters();
+        }
+        const src = buildSequenceDiagramFromGraph(filteredDashboardGraph.nodes.length ? filteredDashboardGraph : dashboardGraph);
+        document.getElementById('dashboardSequenceSource').textContent = src;
+        await renderMermaidInto('dashboardSequenceHost', src);
+        switchDashboardTab('sequence');
+        markDone(3);
+        setStatus('sequenceDiagram を生成しました');
+      } catch (e) { setStatus('sequenceDiagram 生成失敗', true); setRaw(String(e.message || e)); }
+    }
+    function buildSequenceDiagramFromGraph(graph) {
+      const lines = ['sequenceDiagram'];
+      const nodes = (graph.nodes || []).slice(0, 12);
+      nodes.forEach(n => lines.push(`    participant ${sanitizeMermaidId(n.id)} as ${escapeMermaidLabel((n.name || n.id).slice(0, 28))}`));
+      const allowed = new Set(nodes.map(n => n.id));
+      let count = 0;
+      (graph.edges || []).forEach(e => {
+        const s = edgeSourceId(e), t = edgeTargetId(e);
+        if (allowed.has(s) && allowed.has(t) && count < 24) {
+          lines.push(`    ${sanitizeMermaidId(s)}->>${sanitizeMermaidId(t)}: ${escapeMermaidLabel(e.type || 'call')}`);
+          count++;
+        }
+      });
+      if (count === 0 && nodes.length >= 2) {
+        for (let i = 0; i < nodes.length - 1 && i < 6; i++) {
+          lines.push(`    ${sanitizeMermaidId(nodes[i].id)}->>${sanitizeMermaidId(nodes[i+1].id)}: related`);
+        }
+      }
+      return lines.join('\n');
+    }
+
+    function renderDashboardD3(graph) {
+      const svg = d3.select('#dashboardD3Graph');
+      svg.selectAll('*').remove();
+      const width = document.getElementById('dashboardD3Graph').clientWidth || 760;
+      const height = 520;
+      svg.attr('viewBox', `0 0 ${width} ${height}`);
+      if (!graph.nodes.length) return;
+      const nodes = graph.nodes.map(n => ({ ...n }));
+      const links = graph.edges.map(e => ({ source: edgeSourceId(e), target: edgeTargetId(e), type: e.type || 'RELATED' }));
+      const nodeMap = new Map(nodes.map(n => [n.id, n]));
+      const validLinks = links.filter(l => nodeMap.has(l.source) && nodeMap.has(l.target));
+      const simulation = d3.forceSimulation(nodes)
+        .force('link', d3.forceLink(validLinks).id(d => d.id).distance(120))
+        .force('charge', d3.forceManyBody().strength(-420))
+        .force('center', d3.forceCenter(width / 2, height / 2))
+        .force('collision', d3.forceCollide().radius(34));
+      const link = svg.append('g').attr('stroke','#64748b').attr('stroke-opacity',0.8).selectAll('line').data(validLinks).join('line').attr('stroke-width',1.5);
+      const linkLabel = svg.append('g').selectAll('text').data(validLinks).join('text').attr('fill','#94a3b8').attr('font-size',9).text(d => d.type);
+      const node = svg.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer').call(drag(simulation));
+      node.append('circle').attr('r',20).attr('fill',d => colorByLabel(d.label)).attr('stroke','#0b1220').attr('stroke-width',2).on('click',(_,d)=>showDashboardNodeDetail(d));
+      node.append('text').text(d => truncate(d.name || d.id, 18)).attr('fill','#e2e8f0').attr('font-size',10).attr('text-anchor','middle').attr('dy',34);
+      simulation.on('tick', () => {
+        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        linkLabel.attr('x', d => (d.source.x + d.target.x) / 2).attr('y', d => (d.source.y + d.target.y) / 2);
+        node.attr('transform', d => `translate(${d.x},${d.y})`);
+      });
+    }
+    function drag(simulation) {
+      function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
+      function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
+      function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+      return d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended);
+    }
+    function renderDashboardTable(rows) {
+      const host = document.getElementById('dashboardTableHost');
+      if (!rows || !rows.length) { host.innerHTML = '<div class="muted">表形式データはありません</div>'; return; }
+      const cols = [...new Set(rows.flatMap(r => Object.keys(r)))];
+      let html = '<table><thead><tr>' + cols.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+      rows.forEach(r => { html += '<tr>' + cols.map(c => `<td>${escapeHtml(String(r[c] ?? ''))}</td>`).join('') + '</tr>'; });
+      html += '</tbody></table>';
+      host.innerHTML = html;
+    }
+    function switchDashboardTab(name) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `dashboard-tab-${name}`));
+    }
+
     async function loadMigrationIssues() {
-      if (!selectedProject) return;
-      setStatus('移行課題を取得中...');
+      if (!requireProject()) return;
       try {
         const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/openshift-migration-issues`);
         renderMigrationIssues(body);
         markDone(4);
         setStatus('移行課題を取得しました');
-      } catch (e) { setStatus('取得失敗', true); }
+        setRaw(body);
+      } catch (e) { setStatus('取得失敗', true); setRaw(String(e.message || e)); }
     }
-
     function renderMigrationIssues(data) {
       const area = document.getElementById('improvementArea');
       const issues = data.issues || [];
-      if (!issues.length) {
-        area.innerHTML = '<div class="muted">移行課題が見つかりませんでした</div>';
-        return;
-      }
-      let html = `<div class="metric">課題数: ${data.issueCount || issues.length}</div>`;
-      issues.forEach(iss => {
-        html += `
-          <div class="result-card">
-            <h4>${iss.title || '(no title)'}</h4>
-            <div class="meta">重要度: ${iss.severity || '-'} | カテゴリ: ${iss.category || '-'}</div>
-            <div>${iss.description || ''}</div>
-            ${iss.recommendation ? `<div class="evidence">推奨: ${iss.recommendation}</div>` : ''}
-          </div>
-        `;
-      });
-      area.innerHTML = html;
+      if (!issues.length) { area.innerHTML = '<div class="muted">移行課題が見つかりませんでした</div>'; return; }
+      area.innerHTML = `<div class="result-card"><div class="meta">課題数: ${issues.length}</div></div>` + issues.map(iss => `
+        <div class="result-card">
+          <h4>${escapeHtml(iss.title || '(no title)')}</h4>
+          <div class="meta">重要度: ${escapeHtml(iss.severity || '-')} / カテゴリ: ${escapeHtml(iss.category || '-')}</div>
+          <div>${escapeHtml(iss.description || '')}</div>
+          <div class="evidence">推奨: ${escapeHtml(iss.recommendation || '-')}</div>
+        </div>`).join('');
     }
-
     async function loadModernizationPlan() {
-      if (!selectedProject) return;
-      setStatus('モダナイゼーション計画を取得中...');
+      if (!requireProject()) return;
       try {
         const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/modernization-plan`);
         renderModernizationPlan(body);
         markDone(4);
         setStatus('モダナイゼーション計画を取得しました');
-      } catch (e) { setStatus('取得失敗', true); }
+        setRaw(body);
+      } catch (e) { setStatus('取得失敗', true); setRaw(String(e.message || e)); }
     }
-
     function renderModernizationPlan(data) {
       const area = document.getElementById('improvementArea');
       const candidates = data.candidates || [];
-      if (!candidates.length) {
-        area.innerHTML = '<div class="muted">モダナイゼーション候補がありません</div>';
-        return;
-      }
-      let html = `<div class="metric">候補数: ${data.candidateCount || candidates.length}</div>`;
-      candidates.forEach(c => {
-        html += `
-          <div class="result-card">
-            <h4>${c.title || c.name || '(no title)'}</h4>
-            <div class="meta">優先度: ${c.priority || '-'} | 工数: ${c.effort || '-'}</div>
-            <div>${c.description || ''}</div>
-            ${c.rationale ? `<div class="evidence">根拠: ${c.rationale}</div>` : ''}
-          </div>
-        `;
-      });
-      area.innerHTML = html;
+      if (!candidates.length) { area.innerHTML = '<div class="muted">モダナイゼーション候補がありません</div>'; return; }
+      area.innerHTML = `<div class="result-card"><div class="meta">候補数: ${candidates.length}</div></div>` + candidates.map(c => `
+        <div class="result-card">
+          <h4>${escapeHtml(c.targetName || c.title || '(no title)')}</h4>
+          <div class="meta">優先度: ${escapeHtml(c.priority || '-')} / アクション: ${escapeHtml(c.action || '-')}</div>
+          <div class="evidence">根拠: ${escapeHtml(c.rationale || '-')}</div>
+        </div>`).join('');
     }
 
-    // Walkthrough helpers
-    function toggleStep(n) {
-      const step = document.querySelector(`.step[data-step="${n}"]`);
-      step.classList.toggle('open');
+    function goImpact() { if (!requireProject()) return; location.href = `/impact/?projectId=${encodeURIComponent(selectedProject.id)}`; }
+    function edgeSourceId(e) { return typeof e.source === 'object' ? e.source.id : e.source; }
+    function edgeTargetId(e) { return typeof e.target === 'object' ? e.target.id : e.target; }
+    function dedupeGraph(graph) {
+      const nodeMap = new Map();
+      (graph.nodes || []).forEach(n => nodeMap.set(n.id || n.nodeId, { ...n, id: n.id || n.nodeId }));
+      const edgeMap = new Map();
+      (graph.edges || []).forEach(e => { const s = edgeSourceId(e), t = edgeTargetId(e), ty = e.type || 'RELATED'; edgeMap.set(`${s}|${t}|${ty}`, { source:s, target:t, type:ty }); });
+      return { nodes:[...nodeMap.values()], edges:[...edgeMap.values()] };
     }
-    function openStep(n) {
-      document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-      const step = document.querySelector(`.step[data-step="${n}"]`);
-      if (step) { step.classList.add('open', 'active'); }
-    }
-    function markDone(n) {
-      const step = document.querySelector(`.step[data-step="${n}"]`);
-      if (step) step.classList.add('done');
-      if (n < 4) openStep(n + 1);
-    }
+    function colorByLabel(label) { const colors = { Program:'#38bdf8', Route:'#a78bfa', Table:'#22c55e', Column:'#f59e0b', API:'#ef4444', Node:'#94a3b8' }; return colors[label] || '#38bdf8'; }
+    function truncate(s, n) { return s && s.length > n ? s.slice(0, n - 1) + '…' : s; }
+    function sanitizeMermaidId(id) { return String(id || 'node').replace(/[^a-zA-Z0-9_]/g, '_'); }
+    function escapeMermaidLabel(s) { return String(s || '').replace(/"/g, "'").replace(/\[/g, '(').replace(/\]/g, ')'); }
+    function escapeHtml(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 
-    // Init
-    (function init() {
-      checkHealth();
-      loadProjects();
-    })();
+    (function init() { checkHealth(); loadProjects(); openStep(1); })();
   </script>
 </body>
 </html>
