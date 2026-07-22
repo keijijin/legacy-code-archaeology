@@ -7,31 +7,68 @@
   <style>
     :root {
       --bg: #0f172a; --card:#1e293b; --text:#e2e8f0; --muted:#94a3b8; --accent:#38bdf8; --border:#334155;
+      --ok:#22c55e; --warn:#f59e0b; --err:#ef4444;
     }
     body { margin:0; font-family:ui-sans-serif,system-ui,sans-serif; background:linear-gradient(180deg,#0f172a,#111827); color:var(--text); }
-    header, main { max-width:1100px; margin:0 auto; }
+    header, main { max-width:1400px; margin:0 auto; }
     header { padding:1.25rem 1.5rem; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
     main { padding:1.5rem; }
     a { color:var(--accent); text-decoration:none; margin-right:.8rem; }
-    .row { display:flex; gap:.75rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .row { display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:1rem; align-items:center; }
     input, select, button {
-      background:#0b1220; color:var(--text); border:1px solid var(--border); border-radius:.5rem; padding:.65rem .8rem;
+      background:#0b1220; color:var(--text); border:1px solid var(--border); border-radius:.5rem; padding:.55rem .75rem; font-size:.88rem;
     }
     button { background:#0369a1; border-color:#0284c7; cursor:pointer; }
+    button.secondary { background:#334155; border-color:#475569; }
     .card { background:var(--card); border:1px solid var(--border); border-radius:.75rem; padding:1rem; margin-bottom:.75rem; }
     .muted { color:var(--muted); }
-    pre { white-space:pre-wrap; background:#0b1220; border:1px solid var(--border); border-radius:.5rem; padding:.75rem; }
+    pre { white-space:pre-wrap; background:#0b1220; border:1px solid var(--border); border-radius:.5rem; padding:.75rem; font-size:.8rem; max-height:300px; overflow:auto; }
     #status { min-height:1.2rem; color:var(--accent); margin-bottom:1rem; }
+    .layout { display:grid; grid-template-columns: 380px 1fr 340px; gap:1rem; }
+    @media (max-width:1200px) { .layout { grid-template-columns: 1fr; } }
+    .panel { background:var(--card); border:1px solid var(--border); border-radius:.75rem; padding:1rem; }
+    .panel h3 { margin:0 0 .5rem; font-size:.95rem; }
+    .tree-node {
+      padding:.35rem .5rem;
+      border-left:2px solid var(--border);
+      margin-left:.6rem;
+      cursor:pointer;
+      transition:background .1s;
+    }
+    .tree-node:hover { background:rgba(56,189,248,.06); }
+    .tree-node.root { border-left:none; margin-left:0; padding-left:0; }
+    .tree-node .name { font-weight:600; }
+    .tree-node .meta { font-size:.72rem; color:var(--muted); }
+    .tree-node.selected { background:rgba(56,189,248,.15); border-color:var(--accent); }
+    .filter-bar { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.6rem; }
+    .node-detail {
+      background:#0b1220;
+      border:1px solid var(--border);
+      border-radius:.5rem;
+      padding:.75rem;
+    }
+    .node-detail h4 { margin:0 0 .4rem; }
+    .node-detail .kv { display:flex; gap:.4rem; margin-bottom:.25rem; font-size:.82rem; }
+    .node-detail .kv .k { color:var(--muted); min-width:90px; }
+    .badge {
+      display:inline-block; padding:.1rem .4rem; border-radius:999px; font-size:.7rem;
+      border:1px solid var(--border); color:var(--muted);
+    }
+    .badge.high { color:var(--err); border-color:rgba(239,68,68,.4); }
+    .badge.medium { color:var(--warn); border-color:rgba(245,158,11,.4); }
+    .badge.low { color:var(--ok); border-color:rgba(34,197,94,.4); }
+    .graph-svg { background:#0b1220; border:1px solid var(--border); border-radius:.5rem; }
+    .legend { font-size:.72rem; color:var(--muted); margin-top:.4rem; }
   </style>
 </head>
 <body>
   <header>
     <div>
       <strong>影響分析コンソール</strong>
-      <div class="muted">COLUMN / TABLE / ROUTE / PROGRAM / ENDPOINT</div>
+      <div class="muted">COLUMN / TABLE / ROUTE / PROGRAM / ENDPOINT — 関係ツリー + インタラクション</div>
     </div>
     <div>
-      <a href="/">Portal</a>
+      <a href="/">Dashboard</a>
       <a href="/review/">Review</a>
       <a href="/api/health" target="_blank">Health</a>
     </div>
@@ -47,53 +84,287 @@
         <option>ENDPOINT</option>
         <option>API</option>
       </select>
-      <input id="targetName" placeholder="targetName (例: customer_id)" size="28" />
-      <input id="targetId" placeholder="targetId (任意)" size="20" />
+      <input id="targetName" placeholder="targetName (例: customer_id)" size="26" />
+      <input id="targetId" placeholder="targetId (任意)" size="18" />
       <button onclick="runImpact()">影響分析実行</button>
+      <button class="secondary" onclick="clearAll()">クリア</button>
     </div>
     <div id="status"></div>
-    <div id="summary" class="card muted">結果がここに表示されます。</div>
-    <pre id="output">{}</pre>
+
+    <div class="layout">
+      <!-- 1. 関係ツリー -->
+      <div class="panel">
+        <h3>関係ツリー <span class="muted" style="font-weight:400;">(depth 順)</span></h3>
+        <div id="treeArea" style="max-height:520px; overflow:auto;"></div>
+      </div>
+
+      <!-- 2. グラフ可視化（簡易 SVG） -->
+      <div class="panel">
+        <h3>グラフ可視化</h3>
+        <div class="row">
+          <button class="secondary" onclick="renderGraph()">グラフ再描画</button>
+          <span class="muted" style="font-size:.75rem;">ノードをクリックで詳細表示</span>
+        </div>
+        <svg id="graphSvg" class="graph-svg" width="100%" height="480"></svg>
+        <div class="legend">色: HIGH(赤) / MEDIUM(黄) / LOW(緑) — サイズ: 影響度</div>
+      </div>
+
+      <!-- 3. フィルタ + 詳細 -->
+      <div>
+        <div class="panel" style="margin-bottom:.75rem;">
+          <h3>フィルタ</h3>
+          <div class="filter-bar">
+            <select id="filterType" onchange="applyFilters()">
+              <option value="">全 nodeType</option>
+            </select>
+            <select id="filterLevel" onchange="applyFilters()">
+              <option value="">全 impactLevel</option>
+              <option>HIGH</option>
+              <option>MEDIUM</option>
+              <option>LOW</option>
+            </select>
+            <input id="filterText" placeholder="名前で検索" oninput="applyFilters()" />
+          </div>
+          <div class="muted" style="font-size:.75rem;">※ フィルタはツリー・グラフに反映</div>
+        </div>
+
+        <div class="panel">
+          <h3>ノード詳細</h3>
+          <div id="detailArea" class="node-detail muted">ノードをクリックすると詳細が表示されます。</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:1rem;">
+      <div class="row">
+        <button class="secondary" onclick="showRaw()">生データ表示</button>
+      </div>
+      <pre id="output">{}</pre>
+    </div>
   </main>
+
   <script>
     const params = new URLSearchParams(location.search);
     if (params.get('projectId')) document.getElementById('projectId').value = params.get('projectId');
+
+    let lastResult = null;
+    let filteredNodes = [];
+
+    function setStatus(msg, isErr) {
+      const el = document.getElementById('status');
+      el.textContent = msg || '';
+      el.style.color = isErr ? 'var(--err)' : 'var(--accent)';
+    }
+
+    function clearAll() {
+      document.getElementById('treeArea').innerHTML = '';
+      document.getElementById('graphSvg').innerHTML = '';
+      document.getElementById('detailArea').innerHTML = 'ノードをクリックすると詳細が表示されます。';
+      document.getElementById('output').textContent = '{}';
+      lastResult = null;
+      filteredNodes = [];
+    }
 
     async function runImpact() {
       const projectId = document.getElementById('projectId').value.trim();
       const targetType = document.getElementById('targetType').value;
       const targetName = document.getElementById('targetName').value.trim();
       const targetId = document.getElementById('targetId').value.trim();
-      const statusEl = document.getElementById('status');
-      const summaryEl = document.getElementById('summary');
-      const outputEl = document.getElementById('output');
-      if (!projectId) { statusEl.textContent = 'Project ID を入力してください'; return; }
-      if (!targetName && !targetId) { statusEl.textContent = 'targetName または targetId が必要です'; return; }
-      statusEl.textContent = '実行中...';
+      if (!projectId) { setStatus('Project ID を入力してください', true); return; }
+      if (!targetName && !targetId) { setStatus('targetName または targetId が必要です', true); return; }
+      setStatus('実行中...');
       try {
         const res = await fetch(`/api/projects/${encodeURIComponent(projectId)}/impact`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            targetType,
-            targetName: targetName || null,
-            targetId: targetId || null,
-            maxDepth: 3
-          })
+          body: JSON.stringify({ targetType, targetName: targetName || null, targetId: targetId || null, maxDepth: 3 })
         });
         const body = await res.json();
         if (!res.ok) throw new Error(JSON.stringify(body));
-        statusEl.textContent = `完了: impacted=${body.impactedCount ?? 0}`;
-        summaryEl.innerHTML = `
-          <div><strong>${body.targetType || ''} / ${body.targetName || body.targetId || ''}</strong></div>
-          <div class="muted">impactedCount=${body.impactedCount ?? 0}, relatedTests=${(body.relatedTests||[]).length}</div>
-        `;
-        outputEl.textContent = JSON.stringify(body, null, 2);
+        lastResult = body;
+        setStatus(`完了: impacted=${body.impactedCount ?? 0}`);
+        document.getElementById('output').textContent = JSON.stringify(body, null, 2);
+        // ツリー表示
+        renderTree(body.impactedNodes || []);
+        // フィルタ初期化
+        initFilters(body.impactedNodes || []);
+        // グラフ描画
+        filteredNodes = body.impactedNodes || [];
+        renderGraph();
       } catch (e) {
-        statusEl.textContent = '失敗';
-        summaryEl.textContent = String(e.message || e);
-        outputEl.textContent = String(e.message || e);
+        setStatus('失敗', true);
+        document.getElementById('output').textContent = String(e.message || e);
       }
+    }
+
+    // フィルタ初期化
+    function initFilters(nodes) {
+      const typeSel = document.getElementById('filterType');
+      const types = [...new Set(nodes.map(n => n.nodeType).filter(Boolean))];
+      typeSel.innerHTML = '<option value="">全 nodeType</option>' + types.map(t => `<option>${t}</option>`).join('');
+      document.getElementById('filterLevel').value = '';
+      document.getElementById('filterText').value = '';
+    }
+
+    function applyFilters() {
+      if (!lastResult) return;
+      const typeVal = document.getElementById('filterType').value;
+      const levelVal = document.getElementById('filterLevel').value;
+      const textVal = document.getElementById('filterText').value.trim().toLowerCase();
+      filteredNodes = (lastResult.impactedNodes || []).filter(n => {
+        const okType = !typeVal || n.nodeType === typeVal;
+        const okLevel = !levelVal || n.impactLevel === levelVal;
+        const okText = !textVal || (n.name || '').toLowerCase().includes(textVal);
+        return okType && okLevel && okText;
+      });
+      renderTree(filteredNodes);
+      renderGraph();
+    }
+
+    // 関係ツリー表示（depth 順にグループ化）
+    function renderTree(nodes) {
+      const area = document.getElementById('treeArea');
+      area.innerHTML = '';
+      if (!nodes.length) { area.innerHTML = '<div class="muted">ノードがありません</div>'; return; }
+      // depth でグループ化
+      const byDepth = {};
+      nodes.forEach(n => {
+        const d = n.depth ?? 0;
+        (byDepth[d] || (byDepth[d] = [])).push(n);
+      });
+      const depths = Object.keys(byDepth).map(Number).sort((a,b)=>a-b);
+      depths.forEach(d => {
+        const header = document.createElement('div');
+        header.style.cssText = 'margin:.4rem 0 .2rem; font-size:.8rem; color:var(--muted);';
+        header.textContent = `depth=${d}`;
+        area.appendChild(header);
+        byDepth[d].forEach(n => {
+          const div = document.createElement('div');
+          div.className = 'tree-node' + (d === 0 ? ' root' : '');
+          const levelBadge = n.impactLevel ? `<span class="badge ${n.impactLevel.toLowerCase()}">${n.impactLevel}</span>` : '';
+          div.innerHTML = `
+            <div class="name">${n.name || n.nodeId || '(no name)'} ${levelBadge}</div>
+            <div class="meta">${n.nodeType || ''} / ${n.nodeId || ''} ${n.sourcePath ? '· ' + n.sourcePath : ''}</div>
+          `;
+          div.onclick = () => showNodeDetail(n, div);
+          area.appendChild(div);
+        });
+      });
+    }
+
+    let selectedNodeEl = null;
+    function showNodeDetail(node, el) {
+      if (selectedNodeEl) selectedNodeEl.classList.remove('selected');
+      if (el) { el.classList.add('selected'); selectedNodeEl = el; }
+      const area = document.getElementById('detailArea');
+      const path = (node.relationPath || []).join(' → ');
+      area.innerHTML = `
+        <h4>${node.name || node.nodeId || '(no name)'}</h4>
+        <div class="kv"><div class="k">nodeType</div><div>${node.nodeType || '-'}</div></div>
+        <div class="kv"><div class="k">nodeId</div><div>${node.nodeId || '-'}</div></div>
+        <div class="kv"><div class="k">impactLevel</div><div>${node.impactLevel || '-'}</div></div>
+        <div class="kv"><div class="k">depth</div><div>${node.depth ?? '-'}</div></div>
+        <div class="kv"><div class="k">sourcePath</div><div style="word-break:break-all;">${node.sourcePath || '-'}</div></div>
+        <div class="kv"><div class="k">relationPath</div><div style="word-break:break-all;">${path || '-'}</div></div>
+      `;
+    }
+
+    // 簡易グラフ描画（SVG）
+    function renderGraph() {
+      const svg = document.getElementById('graphSvg');
+      svg.innerHTML = '';
+      if (!filteredNodes.length) return;
+      const w = svg.clientWidth || 560;
+      const h = 480;
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+
+      // 簡易レイアウト: depth で横方向、同一 depth で縦方向に並べる
+      const byDepth = {};
+      filteredNodes.forEach(n => {
+        const d = n.depth ?? 0;
+        (byDepth[d] || (byDepth[d] = [])).push(n);
+      });
+      const depths = Object.keys(byDepth).map(Number).sort((a,b)=>a-b);
+      const xStep = depths.length > 1 ? Math.max(80, Math.floor((w - 80) / (depths.length - 1))) : 120;
+      const nodeR = 18;
+
+      // ノード座標
+      const pos = new Map();
+      depths.forEach((d, i) => {
+        const arr = byDepth[d];
+        const yStep = Math.max(36, Math.floor((h - 60) / Math.max(1, arr.length - 1)));
+        arr.forEach((n, j) => {
+          const x = 40 + i * xStep;
+          const y = 40 + (arr.length > 1 ? j * yStep : (h - 80) / 2);
+          pos.set(n.nodeId || n.name, { x, y, node: n });
+        });
+      });
+
+      // エッジ（relationPath の先頭2つを簡易接続）
+      filteredNodes.forEach(n => {
+        const path = n.relationPath || [];
+        if (path.length >= 2) {
+          const a = pos.get(path[0]);
+          const b = pos.get(path[1]);
+          if (a && b) {
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('x1', a.x);
+            line.setAttribute('y1', a.y);
+            line.setAttribute('x2', b.x);
+            line.setAttribute('y2', b.y);
+            line.setAttribute('stroke', '#475569');
+            line.setAttribute('stroke-width', '1.5');
+            svg.appendChild(line);
+          }
+        }
+      });
+
+      // ノード
+      filteredNodes.forEach(n => {
+        const key = n.nodeId || n.name;
+        const p = pos.get(key);
+        if (!p) return;
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        const color = n.impactLevel === 'HIGH' ? '#ef4444' : n.impactLevel === 'MEDIUM' ? '#f59e0b' : '#22c55e';
+        const r = nodeR + Math.min(6, (n.depth ?? 0) * 2);
+        circle.setAttribute('cx', p.x);
+        circle.setAttribute('cy', p.y);
+        circle.setAttribute('r', r);
+        circle.setAttribute('fill', color);
+        circle.setAttribute('stroke', '#0b1220');
+        circle.setAttribute('stroke-width', '2');
+        circle.style.cursor = 'pointer';
+        circle.onclick = () => {
+          // 詳細表示
+          const area = document.getElementById('detailArea');
+          const pathStr = (n.relationPath || []).join(' → ');
+          area.innerHTML = `
+            <h4>${n.name || n.nodeId || '(no name)'}</h4>
+            <div class="kv"><div class="k">nodeType</div><div>${n.nodeType || '-'}</div></div>
+            <div class="kv"><div class="k">nodeId</div><div>${n.nodeId || '-'}</div></div>
+            <div class="kv"><div class="k">impactLevel</div><div>${n.impactLevel || '-'}</div></div>
+            <div class="kv"><div class="k">depth</div><div>${n.depth ?? '-'}</div></div>
+            <div class="kv"><div class="k">sourcePath</div><div style="word-break:break-all;">${n.sourcePath || '-'}</div></div>
+            <div class="kv"><div class="k">relationPath</div><div style="word-break:break-all;">${pathStr || '-'}</div></div>
+          `;
+        };
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('x', p.x);
+        label.setAttribute('y', p.y + r + 14);
+        label.setAttribute('fill', '#94a3b8');
+        label.setAttribute('font-size', '10');
+        label.setAttribute('text-anchor', 'middle');
+        label.textContent = (n.name || n.nodeId || '').slice(0, 18);
+        g.appendChild(circle);
+        g.appendChild(label);
+        svg.appendChild(g);
+      });
+    }
+
+    function showRaw() {
+      if (!lastResult) return;
+      document.getElementById('output').textContent = JSON.stringify(lastResult, null, 2);
     }
   </script>
 </body>
