@@ -188,6 +188,13 @@ public class ExecuteGraphQueryUseCase {
         participants.forEach((id, label) ->
                 sb.append("    participant ").append(id).append(" as ").append(escapeMermaid(label)).append("\n"));
 
+        sb.append("    Note over ");
+        if (!participants.isEmpty()) {
+            String first = participants.keySet().iterator().next();
+            String last = participants.keySet().stream().reduce((a, b) -> b).orElse(first);
+            sb.append(first).append(",").append(last).append(": Generated from knowledge graph").append("\n");
+        }
+
         int count = 0;
         for (Map<String, Object> row : sortedRows) {
             String srcId = strVal(row, "sourceId");

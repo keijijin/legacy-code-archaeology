@@ -160,7 +160,16 @@
                 </select>
                 <input id="dashboardImpactTargetName" placeholder="targetName" style="min-width:180px;" />
                 <input id="dashboardImpactTargetId" placeholder="targetId" style="min-width:160px;" />
+                <select id="dashboardNeighborhoodDepth"><option value="1">近傍1-hop</option><option value="2">近傍2-hop</option></select>
                 <button class="secondary" onclick="visualizeImpactTarget()">影響分析起点で可視化</button>
+              </div>
+              <div class="row" style="margin:.4rem 0 0;">
+                <select id="dashboardQueryTemplate" onchange="applyDashboardQueryTemplate()">
+                  <option value="">クエリテンプレート選択</option>
+                  <option value="allEdges">全体依存グラフ</option>
+                  <option value="programRouteTable">Program→Route→Table</option>
+                  <option value="tableConsumers">特定テーブルの参照元</option>
+                </select>
               </div>
 
               <div class="tabs">
@@ -192,7 +201,7 @@
                       <button class="secondary" onclick="resetDashboardD3View()">Reset View</button>
                     </div>
                   </div>
-                  <div class="row muted" style="font-size:.75rem; margin-bottom:.4rem;">凡例: <span style="color:#38bdf8;">● Program</span> <span style="color:#a78bfa;">● Route</span> <span style="color:#22c55e;">● Table</span> <span style="color:#f59e0b;">● Column</span> <span style="color:#ef4444;">● API</span> <span style="color:#94a3b8;">● Node</span></div>
+                  <div class="row muted" style="font-size:.75rem; margin-bottom:.4rem;">凡例: <span style="color:#38bdf8;">● Program</span> <span style="color:#a78bfa;">● Route</span> <span style="color:#22c55e;">● Table</span> <span style="color:#f59e0b;">● Column</span> <span style="color:#ef4444;">● API</span> <span style="color:#94a3b8;">● Node</span> / エッジ: <span style="color:#64748b;">― relation</span></div>
                   <div class="host"><svg id="dashboardD3Graph"></svg></div>
                 </div>
 
@@ -325,8 +334,9 @@ LIMIT 200</textarea>
     }
     function selectProject(p) {
       selectedProject = p;
-      document.getElementById('selectedInfo').innerHTML = `<div><strong>${escapeHtml(p.name || '(no name)')}</strong></div><div class="muted" style="font-size:.75rem;">${escapeHtml(p.id)}</div>`;
+      document.getElementById('selectedInfo').innerHTML = `<div><strong>${escapeHtml(p.name || '(no name)')}</strong></div><div class="muted" style="font-size:.75rem;">${escapeHtml(p.id)}</div><div id="projectAutoSummary" class="muted" style="font-size:.75rem; margin-top:.35rem;">サマリ読込中...</div>`;
       document.getElementById('workflow').style.display = 'block';
+      loadProjectAutoSummary();
       document.querySelectorAll('.project-item').forEach(el => el.classList.toggle('selected', el.querySelector('.pid').textContent === p.id));
       setStatus(`選択: ${p.name || p.id}`);
       openStep(1);
@@ -716,19 +726,61 @@ LIMIT 200</textarea>
     function expandDashboardNeighborhood() {
       if (!selectedDashboardNode) return setStatus('先にノードをクリックしてください', true);
       const centerId = selectedDashboardNode.id || selectedDashboardNode.nodeId;
-      const edges = (fullDashboardGraph.edges || []).filter(e => edgeSourceId(e) === centerId || edgeTargetId(e) === centerId);
-      const nodeIds = new Set([centerId]);
-      edges.forEach(e => { nodeIds.add(edgeSourceId(e)); nodeIds.add(edgeTargetId(e)); });
-      const nodes = (fullDashboardGraph.nodes || []).filter(n => nodeIds.has(n.id || n.nodeId));
-      dashboardGraph = dedupeGraph({ nodes, edges });
+      const maxDepth = Number(document.getElementById('dashboardNeighborhoodDepth')?.value || '1');
+      let frontier = new Set([centerId]);
+      const collectedNodeIds = new Set([centerId]);
+      const collectedEdges = [];
+      for (let depth = 0; depth < maxDepth; depth++) {
+        const next = new Set();
+        (fullDashboardGraph.edges || []).forEach(e => {
+          const s = edgeSourceId(e), t = edgeTargetId(e);
+          if (frontier.has(s) || frontier.has(t)) {
+            collectedEdges.push(e);
+            collectedNodeIds.add(s); collectedNodeIds.add(t);
+            next.add(s); next.add(t);
+          }
+        });
+        frontier = next;
+      }
+      const nodes = (fullDashboardGraph.nodes || []).filter(n => collectedNodeIds.has(n.id || n.nodeId));
+      dashboardGraph = dedupeGraph({ nodes, edges: collectedEdges });
       applyDashboardFilters();
-      setStatus(`近傍展開: center=${centerId}`);
+      setStatus(`近傍展開: center=${centerId}, depth=${maxDepth}`);
     }
 
     function restoreDashboardGraph() {
       dashboardGraph = fullDashboardGraph;
       applyDashboardFilters();
       setStatus('全体グラフへ戻しました');
+    }
+
+    async function loadProjectAutoSummary() {
+      if (!selectedProject) return;
+      try {
+        const [rules, jobs] = await Promise.all([
+          api(`/api/projects/${encodeURIComponent(selectedProject.id)}/rules`).catch(() => []),
+          api(`/api/projects/${encodeURIComponent(selectedProject.id)}/jobs`).catch(() => [])
+        ]);
+        const summary = document.getElementById('projectAutoSummary');
+        if (summary) {
+          const ruleCount = Array.isArray(rules) ? rules.length : 0;
+          const jobCount = Array.isArray(jobs) ? jobs.length : 0;
+          summary.textContent = `自動サマリ: rules=${ruleCount}, jobs=${jobCount}`;
+        }
+      } catch (_) {}
+    }
+
+    function applyDashboardQueryTemplate() {
+      const val = document.getElementById('dashboardQueryTemplate').value;
+      const targetName = document.getElementById('dashboardImpactTargetName').value.trim();
+      const textarea = document.getElementById('dashboardCypherInput');
+      if (val === 'allEdges') {
+        textarea.value = `MATCH (a)-[r]->(b)\nWHERE a.projectId = $projectId AND b.projectId = $projectId\nRETURN a.id AS sourceId, labels(a)[0] AS sourceLabel, coalesce(a.className, a.routeId, a.tableName, a.name, a.id) AS sourceName, coalesce(a.sourcePath, '') AS sourceSourcePath, b.id AS targetId, labels(b)[0] AS targetLabel, coalesce(b.className, b.routeId, b.tableName, b.name, b.id) AS targetName, coalesce(b.sourcePath, '') AS targetSourcePath, type(r) AS relType\nLIMIT 200`;
+      } else if (val === 'programRouteTable') {
+        textarea.value = `MATCH (p)-[r1]->(x)-[r2]->(t)\nWHERE p.projectId = $projectId AND t.projectId = $projectId\nAND labels(p)[0] = 'Program' AND labels(t)[0] IN ['Table','Column']\nRETURN p.id AS sourceId, labels(p)[0] AS sourceLabel, coalesce(p.className, p.name, p.id) AS sourceName, '' AS sourceSourcePath, t.id AS targetId, labels(t)[0] AS targetLabel, coalesce(t.tableName, t.name, t.id) AS targetName, '' AS targetSourcePath, 'PROGRAM_TO_DATA' AS relType\nLIMIT 200`;
+      } else if (val === 'tableConsumers') {
+        textarea.value = `MATCH (a)-[r]->(b)\nWHERE a.projectId = $projectId AND b.projectId = $projectId AND coalesce(b.tableName, b.name, '') CONTAINS '${targetName}'\nRETURN a.id AS sourceId, labels(a)[0] AS sourceLabel, coalesce(a.className, a.routeId, a.tableName, a.name, a.id) AS sourceName, coalesce(a.sourcePath, '') AS sourceSourcePath, b.id AS targetId, labels(b)[0] AS targetLabel, coalesce(b.className, b.routeId, b.tableName, b.name, b.id) AS targetName, coalesce(b.sourcePath, '') AS targetSourcePath, type(r) AS relType\nLIMIT 200`;
+      }
     }
 
     function colorByLabel(label) { const colors = { Program:'#38bdf8', Route:'#a78bfa', Table:'#22c55e', Column:'#f59e0b', API:'#ef4444', Node:'#94a3b8' }; return colors[label] || '#38bdf8'; }

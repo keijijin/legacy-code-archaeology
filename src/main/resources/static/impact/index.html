@@ -102,12 +102,13 @@
           <div class="row" style="justify-content:space-between;">
             <h3>D3.js による力学グラフ</h3>
             <div class="row">
+              <select id="impactNeighborhoodDepth"><option value="1">近傍1-hop</option><option value="2">近傍2-hop</option></select>
               <button class="secondary" onclick="expandImpactNeighborhood()">近傍展開</button>
               <button class="secondary" onclick="restoreImpactGraph()">全体へ戻す</button>
               <button class="secondary" onclick="resetImpactD3View()">Reset View</button>
             </div>
           </div>
-          <div class="muted" style="font-size:.75rem; margin:.2rem 0 .4rem;">凡例: <span style="color:#38bdf8;">● Program</span> <span style="color:#a78bfa;">● Route</span> <span style="color:#22c55e;">● Table</span> <span style="color:#f59e0b;">● Column</span> <span style="color:#ef4444;">● API</span> <span style="color:#94a3b8;">● Node</span></div>
+          <div class="muted" style="font-size:.75rem; margin:.2rem 0 .4rem;">凡例: <span style="color:#38bdf8;">● Program</span> <span style="color:#a78bfa;">● Route</span> <span style="color:#22c55e;">● Table</span> <span style="color:#f59e0b;">● Column</span> <span style="color:#ef4444;">● API</span> <span style="color:#94a3b8;">● Node</span> / エッジ: <span style="color:#64748b;">― relation</span></div>
           <div class="graph-host"><svg id="d3Graph"></svg></div>
           <div class="muted" style="font-size:.75rem; margin-top:.4rem;">ドラッグ可能 / ズーム / パン / クリックで詳細表示 / フィルタ反映</div>
         </div>
@@ -275,6 +276,7 @@ LIMIT 200</textarea>
         const body = await api(`/api/projects/${encodeURIComponent(projectId)}/graph/edges`);
         lastResult = body;
         currentGraph = { nodes: body.nodes || [], edges: body.edges || [] };
+        fullImpactGraph = currentGraph;
         document.getElementById('output').textContent = JSON.stringify(body, null, 2);
         initFilters(currentGraph.nodes);
         applyFilters();
@@ -302,6 +304,7 @@ LIMIT 200</textarea>
         renderTable(body.rows || []);
         if (mode === 'GRAPH') {
           currentGraph = { nodes: body.nodes || [], edges: body.edges || [] };
+          fullImpactGraph = currentGraph;
           initFilters(currentGraph.nodes);
           applyFilters();
           switchTab('d3');
@@ -583,13 +586,26 @@ LIMIT 200</textarea>
     function expandImpactNeighborhood() {
       if (!selectedImpactNode) return setStatus('先にノードをクリックしてください', true);
       const centerId = selectedImpactNode.id || selectedImpactNode.nodeId;
-      const edges = (fullImpactGraph.edges || []).filter(e => edgeSourceId(e) === centerId || edgeTargetId(e) === centerId);
-      const nodeIds = new Set([centerId]);
-      edges.forEach(e => { nodeIds.add(edgeSourceId(e)); nodeIds.add(edgeTargetId(e)); });
-      const nodes = (fullImpactGraph.nodes || []).filter(n => nodeIds.has(n.id || n.nodeId));
-      currentGraph = dedupeGraph({ nodes, edges });
+      const maxDepth = Number(document.getElementById('impactNeighborhoodDepth')?.value || '1');
+      let frontier = new Set([centerId]);
+      const collectedNodeIds = new Set([centerId]);
+      const collectedEdges = [];
+      for (let depth = 0; depth < maxDepth; depth++) {
+        const next = new Set();
+        (fullImpactGraph.edges || []).forEach(e => {
+          const s = edgeSourceId(e), t = edgeTargetId(e);
+          if (frontier.has(s) || frontier.has(t)) {
+            collectedEdges.push(e);
+            collectedNodeIds.add(s); collectedNodeIds.add(t);
+            next.add(s); next.add(t);
+          }
+        });
+        frontier = next;
+      }
+      const nodes = (fullImpactGraph.nodes || []).filter(n => collectedNodeIds.has(n.id || n.nodeId));
+      currentGraph = dedupeGraph({ nodes, edges: collectedEdges });
       applyFilters();
-      setStatus(`近傍展開: center=${centerId}`);
+      setStatus(`近傍展開: center=${centerId}, depth=${maxDepth}`);
     }
 
     function restoreImpactGraph() {
