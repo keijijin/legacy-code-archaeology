@@ -154,6 +154,14 @@
                 <button class="secondary" onclick="loadSequenceFromApi()">API から sequenceDiagram 読込</button>
                 <button class="secondary" onclick="goImpact()">Impact UI で深掘り</button>
               </div>
+              <div class="row" style="margin:.6rem 0 0;">
+                <select id="dashboardImpactTargetType">
+                  <option>COLUMN</option><option>TABLE</option><option>ROUTE</option><option>PROGRAM</option><option>ENDPOINT</option><option>API</option>
+                </select>
+                <input id="dashboardImpactTargetName" placeholder="targetName" style="min-width:180px;" />
+                <input id="dashboardImpactTargetId" placeholder="targetId" style="min-width:160px;" />
+                <button class="secondary" onclick="visualizeImpactTarget()">影響分析起点で可視化</button>
+              </div>
 
               <div class="tabs">
                 <div class="tab active" data-tab="rules" onclick="switchDashboardTab('rules')">業務ルール</div>
@@ -178,8 +186,13 @@
                 <div class="panel tab-panel" id="dashboard-tab-d3">
                   <div class="row" style="justify-content:space-between;">
                     <h3>D3.js による力学グラフ</h3>
-                    <button class="secondary" onclick="resetDashboardD3View()">Reset View</button>
+                    <div class="row">
+                      <button class="secondary" onclick="expandDashboardNeighborhood()">近傍展開</button>
+                      <button class="secondary" onclick="restoreDashboardGraph()">全体へ戻す</button>
+                      <button class="secondary" onclick="resetDashboardD3View()">Reset View</button>
+                    </div>
                   </div>
+                  <div class="row muted" style="font-size:.75rem; margin-bottom:.4rem;">凡例: <span style="color:#38bdf8;">● Program</span> <span style="color:#a78bfa;">● Route</span> <span style="color:#22c55e;">● Table</span> <span style="color:#f59e0b;">● Column</span> <span style="color:#ef4444;">● API</span> <span style="color:#94a3b8;">● Node</span></div>
                   <div class="host"><svg id="dashboardD3Graph"></svg></div>
                 </div>
 
@@ -255,6 +268,8 @@ LIMIT 200</textarea>
     let dashboardGraph = { nodes: [], edges: [] };
     let filteredDashboardGraph = { nodes: [], edges: [] };
     let selectedDashboardNodeEl = null;
+    let selectedDashboardNode = null;
+    let fullDashboardGraph = { nodes: [], edges: [] };
 
     function setStatus(msg, isErr) {
       globalStatus.textContent = msg || '';
@@ -401,6 +416,7 @@ LIMIT 200</textarea>
       try {
         const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/graph/edges`);
         dashboardGraph = dedupeGraph({ nodes: body.nodes || [], edges: body.edges || [] });
+        fullDashboardGraph = dashboardGraph;
         initDashboardFilters(dashboardGraph.nodes);
         applyDashboardFilters();
         markDone(3);
@@ -422,6 +438,7 @@ LIMIT 200</textarea>
         setRaw(body);
         if (mode === 'GRAPH') {
           dashboardGraph = dedupeGraph({ nodes: body.nodes || [], edges: body.edges || [] });
+          fullDashboardGraph = dashboardGraph;
           initDashboardFilters(dashboardGraph.nodes);
           applyDashboardFilters();
           switchDashboardTab('d3');
@@ -483,6 +500,7 @@ LIMIT 200</textarea>
     function showDashboardNodeDetail(node, el) {
       if (selectedDashboardNodeEl) selectedDashboardNodeEl.classList.remove('selected');
       if (el) { el.classList.add('selected'); selectedDashboardNodeEl = el; }
+      selectedDashboardNode = node;
       document.getElementById('dashboardNodeDetail').innerHTML = `
         <div><strong>${escapeHtml(node.name || node.id || '(no name)')}</strong></div>
         <div class="meta">label=${escapeHtml(node.label || node.nodeType || '-')} / id=${escapeHtml(node.id || node.nodeId || '-')}</div>
@@ -662,6 +680,57 @@ LIMIT 200</textarea>
       (graph.edges || []).forEach(e => { const s = edgeSourceId(e), t = edgeTargetId(e), ty = e.type || 'RELATED'; edgeMap.set(`${s}|${t}|${ty}`, { source:s, target:t, type:ty }); });
       return { nodes:[...nodeMap.values()], edges:[...edgeMap.values()] };
     }
+    async function visualizeImpactTarget() {
+      if (!requireProject()) return;
+      const targetType = document.getElementById('dashboardImpactTargetType').value;
+      const targetName = document.getElementById('dashboardImpactTargetName').value.trim();
+      const targetId = document.getElementById('dashboardImpactTargetId').value.trim();
+      if (!targetName && !targetId) return setStatus('targetName または targetId を入力してください', true);
+      try {
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/impact`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ targetType, targetName: targetName || null, targetId: targetId || null, maxDepth: 3 })
+        });
+        const impactNodes = (body.impactedNodes || []).map(n => ({
+          id: n.nodeId || n.name,
+          label: n.nodeType || 'Node',
+          name: n.name || n.nodeId,
+          sourcePath: n.sourcePath || '',
+          properties: { depth: n.depth, impactLevel: n.impactLevel, relationPath: n.relationPath || [] }
+        }));
+        const edges = [];
+        (body.impactedNodes || []).forEach(n => {
+          const path = n.relationPath || [];
+          for (let i = 0; i < path.length - 1; i++) edges.push({ source: path[i], target: path[i+1], type: 'IMPACTS' });
+        });
+        dashboardGraph = dedupeGraph({ nodes: impactNodes, edges });
+        fullDashboardGraph = dashboardGraph;
+        initDashboardFilters(dashboardGraph.nodes);
+        applyDashboardFilters();
+        switchDashboardTab('d3');
+        setStatus(`影響分析起点で可視化しました: impacted=${body.impactedCount ?? 0}`);
+        setRaw(body);
+      } catch (e) { setStatus('影響分析可視化失敗', true); setRaw(String(e.message || e)); }
+    }
+
+    function expandDashboardNeighborhood() {
+      if (!selectedDashboardNode) return setStatus('先にノードをクリックしてください', true);
+      const centerId = selectedDashboardNode.id || selectedDashboardNode.nodeId;
+      const edges = (fullDashboardGraph.edges || []).filter(e => edgeSourceId(e) === centerId || edgeTargetId(e) === centerId);
+      const nodeIds = new Set([centerId]);
+      edges.forEach(e => { nodeIds.add(edgeSourceId(e)); nodeIds.add(edgeTargetId(e)); });
+      const nodes = (fullDashboardGraph.nodes || []).filter(n => nodeIds.has(n.id || n.nodeId));
+      dashboardGraph = dedupeGraph({ nodes, edges });
+      applyDashboardFilters();
+      setStatus(`近傍展開: center=${centerId}`);
+    }
+
+    function restoreDashboardGraph() {
+      dashboardGraph = fullDashboardGraph;
+      applyDashboardFilters();
+      setStatus('全体グラフへ戻しました');
+    }
+
     function colorByLabel(label) { const colors = { Program:'#38bdf8', Route:'#a78bfa', Table:'#22c55e', Column:'#f59e0b', API:'#ef4444', Node:'#94a3b8' }; return colors[label] || '#38bdf8'; }
     function truncate(s, n) { return s && s.length > n ? s.slice(0, n - 1) + '…' : s; }
     function sanitizeMermaidId(id) { return String(id || 'node').replace(/[^a-zA-Z0-9_]/g, '_'); }

@@ -172,12 +172,14 @@ public class ExecuteGraphQueryUseCase {
         StringBuilder sb = new StringBuilder("sequenceDiagram\n");
         Map<String, String> participants = new LinkedHashMap<>();
 
-        for (Map<String, Object> row : rows) {
+        List<Map<String, Object>> sortedRows = new ArrayList<>(rows);
+        sortedRows.sort((a, b) -> Integer.compare(sequenceRank(a), sequenceRank(b)));
+
+        for (Map<String, Object> row : sortedRows) {
             String srcId = strVal(row, "sourceId");
             String tgtId = strVal(row, "targetId");
-            String srcName = coalesce(strVal(row, "sourceName"), srcId, "unknown");
-            String tgtName = coalesce(strVal(row, "targetName"), tgtId, "unknown");
-            String relType = coalesce(strVal(row, "relType"), "related");
+            String srcName = formatSequenceParticipant(strVal(row, "sourceLabel"), coalesce(strVal(row, "sourceName"), srcId, "unknown"));
+            String tgtName = formatSequenceParticipant(strVal(row, "targetLabel"), coalesce(strVal(row, "targetName"), tgtId, "unknown"));
 
             if (srcId != null) participants.putIfAbsent(sanitizeMermaidId(srcId), srcName);
             if (tgtId != null) participants.putIfAbsent(sanitizeMermaidId(tgtId), tgtName);
@@ -187,10 +189,10 @@ public class ExecuteGraphQueryUseCase {
                 sb.append("    participant ").append(id).append(" as ").append(escapeMermaid(label)).append("\n"));
 
         int count = 0;
-        for (Map<String, Object> row : rows) {
+        for (Map<String, Object> row : sortedRows) {
             String srcId = strVal(row, "sourceId");
             String tgtId = strVal(row, "targetId");
-            String relType = coalesce(strVal(row, "relType"), "related");
+            String relType = toSequenceMessage(strVal(row, "relType"));
             if (srcId != null && tgtId != null && count < 80) {
                 sb.append("    ")
                         .append(sanitizeMermaidId(srcId))
@@ -212,6 +214,48 @@ public class ExecuteGraphQueryUseCase {
                 .edges(List.of())
                 .mermaid(sb.toString())
                 .build();
+    }
+
+    private int sequenceRank(Map<String, Object> row) {
+        String sourceLabel = coalesce(strVal(row, "sourceLabel"), "Node");
+        String targetLabel = coalesce(strVal(row, "targetLabel"), "Node");
+        return labelRank(sourceLabel) * 10 + labelRank(targetLabel);
+    }
+
+    private int labelRank(String label) {
+        return switch (label == null ? "" : label.toUpperCase()) {
+            case "PROGRAM" -> 1;
+            case "ROUTE" -> 2;
+            case "API", "ENDPOINT" -> 3;
+            case "TABLE" -> 4;
+            case "COLUMN" -> 5;
+            default -> 9;
+        };
+    }
+
+    private String formatSequenceParticipant(String label, String name) {
+        String prefix = switch (label == null ? "" : label.toUpperCase()) {
+            case "PROGRAM" -> "Program";
+            case "ROUTE" -> "Route";
+            case "TABLE" -> "Table";
+            case "COLUMN" -> "Column";
+            case "API" -> "API";
+            case "ENDPOINT" -> "Endpoint";
+            default -> "Node";
+        };
+        return prefix + ": " + name;
+    }
+
+    private String toSequenceMessage(String relType) {
+        if (relType == null || relType.isBlank()) return "related";
+        return switch (relType.toUpperCase()) {
+            case "CALLS" -> "call";
+            case "USES_TABLE" -> "use table";
+            case "ROUTES_TO" -> "route";
+            case "READS" -> "read";
+            case "WRITES" -> "write";
+            default -> relType.toLowerCase();
+        };
     }
 
     private void extractNode(Map<String, Object> row, String idKey, String labelKey,
