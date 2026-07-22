@@ -83,10 +83,13 @@ public class ProjectController {
         body.put("projectId", projectId);
         body.put("assetCount", assetCount);
         body.put("ruleCount", ruleCount);
+        JobDto.Response latestJob = jobs.isEmpty() ? null : jobs.get(0);
         body.put("jobCount", jobs.size());
         body.put("graphNodeCount", graphNodeCount);
         body.put("graphEdgeCount", graphEdgeCount);
-        body.put("latestJobStatus", jobs.isEmpty() ? null : jobs.get(0).getStatus());
+        body.put("latestJobStatus", latestJob == null ? null : latestJob.getStatus());
+        body.put("latestJobType", latestJob == null ? null : latestJob.getJobType());
+        body.put("latestJobCreatedAt", latestJob == null ? null : latestJob.getCreatedAt());
         return ResponseEntity.ok(body);
     }
 

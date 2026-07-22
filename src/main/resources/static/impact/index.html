@@ -193,6 +193,7 @@ LIMIT 200</textarea>
     let selectedNodeEl = null;
     let selectedImpactNode = null;
     let fullImpactGraph = { nodes: [], edges: [] };
+    let pinnedImpactNodeIds = new Set();
 
     function setStatus(msg, isErr) {
       const el = document.getElementById('status');
@@ -484,7 +485,7 @@ LIMIT 200</textarea>
       impactD3Zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (event) => root.attr('transform', event.transform));
       svg.call(impactD3Zoom);
 
-      const nodes = graph.nodes.map(n => ({ ...n }));
+      const nodes = graph.nodes.map(n => ({ ...n, isPinned: pinnedImpactNodeIds.has(n.id) }));
       const links = graph.edges.map(e => ({ source: edgeSourceId(e), target: edgeTargetId(e), type: e.type || 'RELATED' }));
       const nodeMap = new Map(nodes.map(n => [n.id, n]));
       const validLinks = links.filter(l => nodeMap.has(l.source) && nodeMap.has(l.target));
@@ -533,6 +534,12 @@ LIMIT 200</textarea>
         .attr('text-anchor', 'middle')
         .attr('dy', 34);
 
+      nodes.forEach(n => {
+        if (n.isPinned) {
+          n.fx = n.x ?? width / 2;
+          n.fy = n.y ?? height / 2;
+        }
+      });
       simulation.on('tick', () => {
         link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
         linkLabel.attr('x', d => (d.source.x + d.target.x) / 2).attr('y', d => (d.source.y + d.target.y) / 2);
@@ -552,10 +559,12 @@ LIMIT 200</textarea>
       if (node.isPinned) {
         node.fx = node.x;
         node.fy = node.y;
+        pinnedImpactNodeIds.add(node.id);
         setStatus(`ノード固定: ${node.name || node.id}`);
       } else {
         node.fx = null;
         node.fy = null;
+        pinnedImpactNodeIds.delete(node.id);
         setStatus(`ノード固定解除: ${node.name || node.id}`);
       }
       simulation.alpha(0.3).restart();

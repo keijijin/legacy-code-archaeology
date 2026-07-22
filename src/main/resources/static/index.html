@@ -279,6 +279,7 @@ LIMIT 200</textarea>
     let selectedDashboardNodeEl = null;
     let selectedDashboardNode = null;
     let fullDashboardGraph = { nodes: [], edges: [] };
+    let pinnedDashboardNodeIds = new Set();
 
     function setStatus(msg, isErr) {
       globalStatus.textContent = msg || '';
@@ -590,7 +591,7 @@ LIMIT 200</textarea>
       dashboardD3Zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (event) => root.attr('transform', event.transform));
       svg.call(dashboardD3Zoom);
 
-      const nodes = graph.nodes.map(n => ({ ...n }));
+      const nodes = graph.nodes.map(n => ({ ...n, isPinned: pinnedDashboardNodeIds.has(n.id) }));
       const links = graph.edges.map(e => ({ source: edgeSourceId(e), target: edgeTargetId(e), type: e.type || 'RELATED' }));
       const nodeMap = new Map(nodes.map(n => [n.id, n]));
       const validLinks = links.filter(l => nodeMap.has(l.source) && nodeMap.has(l.target));
@@ -604,6 +605,12 @@ LIMIT 200</textarea>
       const node = root.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer').call(drag(simulation));
       node.append('circle').attr('r',20).attr('fill',d => colorByLabel(d.label)).attr('stroke',d => d.isPinned ? '#f8fafc' : '#0b1220').attr('stroke-width',d => d.isPinned ? 4 : 2).on('click',(_,d)=>showDashboardNodeDetail(d)).on('dblclick', (_, d) => toggleDashboardNodePin(d, simulation));
       node.append('text').text(d => truncate(d.name || d.id, 18)).attr('fill','#e2e8f0').attr('font-size',10).attr('text-anchor','middle').attr('dy',34);
+      nodes.forEach(n => {
+        if (n.isPinned) {
+          n.fx = n.x ?? width / 2;
+          n.fy = n.y ?? height / 2;
+        }
+      });
       simulation.on('tick', () => {
         link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
         linkLabel.attr('x', d => (d.source.x + d.target.x) / 2).attr('y', d => (d.source.y + d.target.y) / 2);
@@ -622,10 +629,12 @@ LIMIT 200</textarea>
       if (node.isPinned) {
         node.fx = node.x;
         node.fy = node.y;
+        pinnedDashboardNodeIds.add(node.id);
         setStatus(`ノード固定: ${node.name || node.id}`);
       } else {
         node.fx = null;
         node.fy = null;
+        pinnedDashboardNodeIds.delete(node.id);
         setStatus(`ノード固定解除: ${node.name || node.id}`);
       }
       simulation.alpha(0.3).restart();
@@ -777,7 +786,7 @@ LIMIT 200</textarea>
         const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/summary`).catch(() => null);
         const summary = document.getElementById('projectAutoSummary');
         if (summary && body) {
-          summary.textContent = `自動サマリ: assets=${body.assetCount ?? 0}, rules=${body.ruleCount ?? 0}, jobs=${body.jobCount ?? 0}, graphNodes=${body.graphNodeCount ?? 0}, graphEdges=${body.graphEdgeCount ?? 0}, latest=${body.latestJobStatus ?? '-'}`;
+          summary.textContent = `自動サマリ: assets=${body.assetCount ?? 0}, rules=${body.ruleCount ?? 0}, jobs=${body.jobCount ?? 0}, graphNodes=${body.graphNodeCount ?? 0}, graphEdges=${body.graphEdgeCount ?? 0}, latest=${body.latestJobStatus ?? '-'} (${body.latestJobType ?? '-'} @ ${body.latestJobCreatedAt ?? '-'})`;
         }
       } catch (_) {}
     }
