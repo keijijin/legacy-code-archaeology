@@ -105,6 +105,8 @@
               <select id="impactNeighborhoodDepth"><option value="1">近傍1-hop</option><option value="2">近傍2-hop</option></select>
               <button class="secondary" onclick="expandImpactNeighborhood()">近傍展開</button>
               <button class="secondary" onclick="restoreImpactGraph()">全体へ戻す</button>
+              <button class="secondary" onclick="clearImpactPins()">固定解除</button>
+              <button class="secondary" onclick="focusImpactSelectedNode()">選択ノードへフォーカス</button>
               <button class="secondary" onclick="resetImpactD3View()">Reset View</button>
             </div>
           </div>
@@ -473,6 +475,7 @@ LIMIT 200</textarea>
     }
 
     let impactD3Zoom = null;
+    let impactD3Svg = null;
     function renderD3Graph(graph) {
       const svg = d3.select('#d3Graph');
       svg.selectAll('*').remove();
@@ -517,8 +520,14 @@ LIMIT 200</textarea>
         .data(nodes)
         .join('g')
         .style('cursor', 'pointer')
-        .call(drag(simulation));
+        .call(drag(simulation, pinnedImpactNodeIds));
 
+      nodes.forEach(n => {
+        if (n.isPinned) {
+          n.fx = n.x ?? width / 2;
+          n.fy = n.y ?? height / 2;
+        }
+      });
       node.append('circle')
         .attr('r', 20)
         .attr('fill', d => colorByLabel(d.label))
@@ -573,7 +582,7 @@ LIMIT 200</textarea>
         .attr('stroke-width', d => d.isPinned ? 4 : 2);
     }
 
-    function drag(simulation) {
+    function drag(simulation, pinnedIds = new Set()) {
       function dragstarted(event, d) {
         if (!event.active) simulation.alphaTarget(0.3).restart();
         d.fx = d.x; d.fy = d.y;
@@ -583,7 +592,12 @@ LIMIT 200</textarea>
       }
       function dragended(event, d) {
         if (!event.active) simulation.alphaTarget(0);
-        d.fx = null; d.fy = null;
+        if (d.isPinned || pinnedIds.has(d.id)) {
+          d.fx = event.x;
+          d.fy = event.y;
+        } else {
+          d.fx = null; d.fy = null;
+        }
       }
       return d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended);
     }
@@ -639,6 +653,23 @@ LIMIT 200</textarea>
       currentGraph = fullImpactGraph;
       applyFilters();
       setStatus('全体グラフへ戻しました');
+    }
+
+    function clearImpactPins() {
+      pinnedImpactNodeIds.clear();
+      applyFilters();
+      setStatus('Impact UI の固定ノードを解除しました');
+    }
+
+    function focusImpactSelectedNode() {
+      if (!selectedImpactNode || !impactD3Svg || !impactD3Zoom) return setStatus('先にノードを選択してください', true);
+      const x = selectedImpactNode.x ?? 0;
+      const y = selectedImpactNode.y ?? 0;
+      const width = document.getElementById('d3Graph').clientWidth || 760;
+      const height = 520;
+      const transform = d3.zoomIdentity.translate(width / 2 - x, height / 2 - y).scale(1.2);
+      impactD3Svg.transition().duration(250).call(impactD3Zoom.transform, transform);
+      setStatus(`選択ノードへフォーカス: ${selectedImpactNode.name || selectedImpactNode.id}`);
     }
 
     function showRaw() {

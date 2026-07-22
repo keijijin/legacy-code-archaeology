@@ -198,6 +198,8 @@
                     <div class="row">
                       <button class="secondary" onclick="expandDashboardNeighborhood()">近傍展開</button>
                       <button class="secondary" onclick="restoreDashboardGraph()">全体へ戻す</button>
+                      <button class="secondary" onclick="clearDashboardPins()">固定解除</button>
+                      <button class="secondary" onclick="focusDashboardSelectedNode()">選択ノードへフォーカス</button>
                       <button class="secondary" onclick="resetDashboardD3View()">Reset View</button>
                     </div>
                   </div>
@@ -579,6 +581,7 @@ LIMIT 200</textarea>
     }
 
     let dashboardD3Zoom = null;
+    let dashboardD3Svg = null;
     function renderDashboardD3(graph) {
       const svg = d3.select('#dashboardD3Graph');
       svg.selectAll('*').remove();
@@ -602,7 +605,13 @@ LIMIT 200</textarea>
         .force('collision', d3.forceCollide().radius(34));
       const link = root.append('g').attr('stroke','#64748b').attr('stroke-opacity',0.8).selectAll('line').data(validLinks).join('line').attr('stroke-width',1.5);
       const linkLabel = root.append('g').selectAll('text').data(validLinks).join('text').attr('fill','#94a3b8').attr('font-size',9).text(d => d.type);
-      const node = root.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer').call(drag(simulation));
+      const node = root.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer').call(drag(simulation, pinnedDashboardNodeIds));
+      nodes.forEach(n => {
+        if (n.isPinned) {
+          n.fx = n.x ?? width / 2;
+          n.fy = n.y ?? height / 2;
+        }
+      });
       node.append('circle').attr('r',20).attr('fill',d => colorByLabel(d.label)).attr('stroke',d => d.isPinned ? '#f8fafc' : '#0b1220').attr('stroke-width',d => d.isPinned ? 4 : 2).on('click',(_,d)=>showDashboardNodeDetail(d)).on('dblclick', (_, d) => toggleDashboardNodePin(d, simulation));
       node.append('text').text(d => truncate(d.name || d.id, 18)).attr('fill','#e2e8f0').attr('font-size',10).attr('text-anchor','middle').attr('dy',34);
       nodes.forEach(n => {
@@ -642,10 +651,19 @@ LIMIT 200</textarea>
         .attr('stroke', d => d.isPinned ? '#f8fafc' : '#0b1220')
         .attr('stroke-width', d => d.isPinned ? 4 : 2);
     }
-    function drag(simulation) {
+    function drag(simulation, pinnedIds = new Set()) {
       function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }
       function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
-      function dragended(event, d) { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }
+      function dragended(event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        if (d.isPinned || pinnedIds.has(d.id)) {
+          d.fx = event.x;
+          d.fy = event.y;
+        } else {
+          d.fx = null;
+          d.fy = null;
+        }
+      }
       return d3.drag().on('start', dragstarted).on('drag', dragged).on('end', dragended);
     }
     function renderDashboardTable(rows) {
@@ -778,6 +796,23 @@ LIMIT 200</textarea>
       dashboardGraph = fullDashboardGraph;
       applyDashboardFilters();
       setStatus('全体グラフへ戻しました');
+    }
+
+    function clearDashboardPins() {
+      pinnedDashboardNodeIds.clear();
+      applyDashboardFilters();
+      setStatus('Dashboard の固定ノードを解除しました');
+    }
+
+    function focusDashboardSelectedNode() {
+      if (!selectedDashboardNode || !dashboardD3Svg || !dashboardD3Zoom) return setStatus('先にノードを選択してください', true);
+      const x = selectedDashboardNode.x ?? 0;
+      const y = selectedDashboardNode.y ?? 0;
+      const width = document.getElementById('dashboardD3Graph').clientWidth || 760;
+      const height = 520;
+      const transform = d3.zoomIdentity.translate(width / 2 - x, height / 2 - y).scale(1.2);
+      dashboardD3Svg.transition().duration(250).call(dashboardD3Zoom.transform, transform);
+      setStatus(`選択ノードへフォーカス: ${selectedDashboardNode.name || selectedDashboardNode.id}`);
     }
 
     async function loadProjectAutoSummary() {
