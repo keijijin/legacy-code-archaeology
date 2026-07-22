@@ -151,6 +151,7 @@
                 <button onclick="loadBusinessRules()">業務ルール候補を表示</button>
                 <button class="secondary" onclick="loadDashboardGraph()">依存グラフを表示</button>
                 <button class="secondary" onclick="generateSequenceDiagram()">ダイアログ生成</button>
+                <button class="secondary" onclick="loadSequenceFromApi()">API から sequenceDiagram 読込</button>
                 <button class="secondary" onclick="goImpact()">Impact UI で深掘り</button>
               </div>
 
@@ -175,7 +176,10 @@
                 </div>
 
                 <div class="panel tab-panel" id="dashboard-tab-d3">
-                  <h3>D3.js による力学グラフ</h3>
+                  <div class="row" style="justify-content:space-between;">
+                    <h3>D3.js による力学グラフ</h3>
+                    <button class="secondary" onclick="resetDashboardD3View()">Reset View</button>
+                  </div>
                   <div class="host"><svg id="dashboardD3Graph"></svg></div>
                 </div>
 
@@ -509,22 +513,20 @@ LIMIT 200</textarea>
     }
 
     async function generateSequenceDiagram() {
+      return loadSequenceFromApi();
+    }
+
+    async function loadSequenceFromApi() {
       if (!requireProject()) return;
       try {
-        // graph/edges を利用して sequenceDiagram を簡易生成
-        if (!dashboardGraph.nodes.length) {
-          const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/graph/edges`);
-          dashboardGraph = dedupeGraph({ nodes: body.nodes || [], edges: body.edges || [] });
-          initDashboardFilters(dashboardGraph.nodes);
-          applyDashboardFilters();
-        }
-        const src = buildSequenceDiagramFromGraph(filteredDashboardGraph.nodes.length ? filteredDashboardGraph : dashboardGraph);
-        document.getElementById('dashboardSequenceSource').textContent = src;
-        await renderMermaidInto('dashboardSequenceHost', src);
+        const body = await api(`/api/projects/${encodeURIComponent(selectedProject.id)}/graph/sequence`);
+        document.getElementById('dashboardSequenceSource').textContent = body.mermaid || 'sequenceDiagram';
+        await renderMermaidInto('dashboardSequenceHost', body.mermaid || 'sequenceDiagram');
         switchDashboardTab('sequence');
         markDone(3);
-        setStatus('sequenceDiagram を生成しました');
-      } catch (e) { setStatus('sequenceDiagram 生成失敗', true); setRaw(String(e.message || e)); }
+        setStatus('sequenceDiagram を API から読込しました');
+        setRaw(body);
+      } catch (e) { setStatus('sequenceDiagram 取得失敗', true); setRaw(String(e.message || e)); }
     }
     function buildSequenceDiagramFromGraph(graph) {
       const lines = ['sequenceDiagram'];
@@ -547,6 +549,7 @@ LIMIT 200</textarea>
       return lines.join('\n');
     }
 
+    let dashboardD3Zoom = null;
     function renderDashboardD3(graph) {
       const svg = d3.select('#dashboardD3Graph');
       svg.selectAll('*').remove();
@@ -554,6 +557,11 @@ LIMIT 200</textarea>
       const height = 520;
       svg.attr('viewBox', `0 0 ${width} ${height}`);
       if (!graph.nodes.length) return;
+
+      const root = svg.append('g');
+      dashboardD3Zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (event) => root.attr('transform', event.transform));
+      svg.call(dashboardD3Zoom);
+
       const nodes = graph.nodes.map(n => ({ ...n }));
       const links = graph.edges.map(e => ({ source: edgeSourceId(e), target: edgeTargetId(e), type: e.type || 'RELATED' }));
       const nodeMap = new Map(nodes.map(n => [n.id, n]));
@@ -563,9 +571,9 @@ LIMIT 200</textarea>
         .force('charge', d3.forceManyBody().strength(-420))
         .force('center', d3.forceCenter(width / 2, height / 2))
         .force('collision', d3.forceCollide().radius(34));
-      const link = svg.append('g').attr('stroke','#64748b').attr('stroke-opacity',0.8).selectAll('line').data(validLinks).join('line').attr('stroke-width',1.5);
-      const linkLabel = svg.append('g').selectAll('text').data(validLinks).join('text').attr('fill','#94a3b8').attr('font-size',9).text(d => d.type);
-      const node = svg.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer').call(drag(simulation));
+      const link = root.append('g').attr('stroke','#64748b').attr('stroke-opacity',0.8).selectAll('line').data(validLinks).join('line').attr('stroke-width',1.5);
+      const linkLabel = root.append('g').selectAll('text').data(validLinks).join('text').attr('fill','#94a3b8').attr('font-size',9).text(d => d.type);
+      const node = root.append('g').selectAll('g').data(nodes).join('g').style('cursor','pointer').call(drag(simulation));
       node.append('circle').attr('r',20).attr('fill',d => colorByLabel(d.label)).attr('stroke','#0b1220').attr('stroke-width',2).on('click',(_,d)=>showDashboardNodeDetail(d));
       node.append('text').text(d => truncate(d.name || d.id, 18)).attr('fill','#e2e8f0').attr('font-size',10).attr('text-anchor','middle').attr('dy',34);
       simulation.on('tick', () => {
@@ -573,6 +581,12 @@ LIMIT 200</textarea>
         linkLabel.attr('x', d => (d.source.x + d.target.x) / 2).attr('y', d => (d.source.y + d.target.y) / 2);
         node.attr('transform', d => `translate(${d.x},${d.y})`);
       });
+    }
+    function resetDashboardD3View() {
+      const svg = d3.select('#dashboardD3Graph');
+      if (dashboardD3Zoom) {
+        svg.transition().duration(250).call(dashboardD3Zoom.transform, d3.zoomIdentity);
+      }
     }
     function drag(simulation) {
       function dragstarted(event, d) { if (!event.active) simulation.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; }

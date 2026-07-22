@@ -94,13 +94,17 @@
         <div class="tabs">
           <div class="tab active" data-tab="d3" onclick="switchTab('d3')">D3 力学グラフ</div>
           <div class="tab" data-tab="mermaid" onclick="switchTab('mermaid')">Mermaid flowchart TD</div>
+          <div class="tab" data-tab="sequence" onclick="switchTab('sequence')">sequenceDiagram</div>
           <div class="tab" data-tab="table" onclick="switchTab('table')">クエリ結果表</div>
         </div>
 
         <div id="tab-d3" class="tab-panel active">
-          <h3>D3.js による力学グラフ</h3>
+          <div class="row" style="justify-content:space-between;">
+            <h3>D3.js による力学グラフ</h3>
+            <button class="secondary" onclick="resetImpactD3View()">Reset View</button>
+          </div>
           <div class="graph-host"><svg id="d3Graph"></svg></div>
-          <div class="muted" style="font-size:.75rem; margin-top:.4rem;">ドラッグ可能 / クリックで詳細表示 / フィルタ反映</div>
+          <div class="muted" style="font-size:.75rem; margin-top:.4rem;">ドラッグ可能 / ズーム / パン / クリックで詳細表示 / フィルタ反映</div>
         </div>
 
         <div id="tab-mermaid" class="tab-panel">
@@ -111,6 +115,15 @@
           </div>
           <div id="mermaidHost" class="mermaid-host"></div>
           <pre id="mermaidSource"></pre>
+        </div>
+
+        <div id="tab-sequence" class="tab-panel">
+          <h3>sequenceDiagram</h3>
+          <div class="row">
+            <button class="secondary" onclick="loadSequenceFromApi()">API から sequenceDiagram 読込</button>
+          </div>
+          <div id="sequenceHost" class="mermaid-host"></div>
+          <pre id="sequenceSource"></pre>
         </div>
 
         <div id="tab-table" class="tab-panel">
@@ -388,6 +401,22 @@ LIMIT 200</textarea>
       }
     }
 
+    async function loadSequenceFromApi() {
+      const projectId = document.getElementById('projectId').value.trim();
+      if (!projectId) return setStatus('Project ID を入力してください', true);
+      try {
+        const body = await api(`/api/projects/${encodeURIComponent(projectId)}/graph/sequence`);
+        lastResult = body;
+        document.getElementById('sequenceSource').textContent = body.mermaid || '';
+        await renderSequence(body.mermaid || 'sequenceDiagram');
+        switchTab('sequence');
+        setStatus('sequenceDiagram を API から読込しました');
+      } catch (e) {
+        setStatus('sequenceDiagram 読込失敗', true);
+        document.getElementById('output').textContent = String(e.message || e);
+      }
+    }
+
     function buildMermaidFromGraph(graph) {
       const lines = ['flowchart TD'];
       (graph.nodes || []).forEach(n => {
@@ -418,6 +447,20 @@ LIMIT 200</textarea>
       }
     }
 
+    async function renderSequence(source) {
+      const host = document.getElementById('sequenceHost');
+      host.innerHTML = '<div class="muted" style="padding:1rem;">描画中...</div>';
+      try {
+        const id = 'sequence-' + Date.now();
+        const { svg } = await mermaid.render(id, source);
+        host.innerHTML = svg;
+      } catch (e) {
+        host.innerHTML = `<pre>${escapeHtml(source)}</pre>`;
+        setStatus('sequenceDiagram 描画失敗。ソースを表示しています。', true);
+      }
+    }
+
+    let impactD3Zoom = null;
     function renderD3Graph(graph) {
       const svg = d3.select('#d3Graph');
       svg.selectAll('*').remove();
@@ -425,6 +468,10 @@ LIMIT 200</textarea>
       const height = 520;
       svg.attr('viewBox', `0 0 ${width} ${height}`);
       if (!graph.nodes.length) return;
+
+      const root = svg.append('g');
+      impactD3Zoom = d3.zoom().scaleExtent([0.2, 4]).on('zoom', (event) => root.attr('transform', event.transform));
+      svg.call(impactD3Zoom);
 
       const nodes = graph.nodes.map(n => ({ ...n }));
       const links = graph.edges.map(e => ({ source: edgeSourceId(e), target: edgeTargetId(e), type: e.type || 'RELATED' }));
@@ -437,7 +484,7 @@ LIMIT 200</textarea>
         .force('center', d3.forceCenter(width / 2, height / 2))
         .force('collision', d3.forceCollide().radius(36));
 
-      const link = svg.append('g')
+      const link = root.append('g')
         .attr('stroke', '#64748b')
         .attr('stroke-opacity', 0.8)
         .selectAll('line')
@@ -445,7 +492,7 @@ LIMIT 200</textarea>
         .join('line')
         .attr('stroke-width', 1.5);
 
-      const linkLabel = svg.append('g')
+      const linkLabel = root.append('g')
         .selectAll('text')
         .data(validLinks)
         .join('text')
@@ -453,7 +500,7 @@ LIMIT 200</textarea>
         .attr('font-size', 9)
         .text(d => d.type);
 
-      const node = svg.append('g')
+      const node = root.append('g')
         .selectAll('g')
         .data(nodes)
         .join('g')
@@ -475,18 +522,17 @@ LIMIT 200</textarea>
         .attr('dy', 34);
 
       simulation.on('tick', () => {
-        link
-          .attr('x1', d => d.source.x)
-          .attr('y1', d => d.source.y)
-          .attr('x2', d => d.target.x)
-          .attr('y2', d => d.target.y);
-
-        linkLabel
-          .attr('x', d => (d.source.x + d.target.x) / 2)
-          .attr('y', d => (d.source.y + d.target.y) / 2);
-
+        link.attr('x1', d => d.source.x).attr('y1', d => d.source.y).attr('x2', d => d.target.x).attr('y2', d => d.target.y);
+        linkLabel.attr('x', d => (d.source.x + d.target.x) / 2).attr('y', d => (d.source.y + d.target.y) / 2);
         node.attr('transform', d => `translate(${d.x},${d.y})`);
       });
+    }
+
+    function resetImpactD3View() {
+      const svg = d3.select('#d3Graph');
+      if (impactD3Zoom) {
+        svg.transition().duration(250).call(impactD3Zoom.transform, d3.zoomIdentity);
+      }
     }
 
     function drag(simulation) {

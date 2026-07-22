@@ -36,6 +36,7 @@ public class ExecuteGraphQueryUseCase {
         return switch (mode) {
             case "TABLE" -> buildTableResponse(projectId, rows);
             case "MERMAID" -> buildMermaidResponse(projectId, rows);
+            case "SEQUENCE" -> buildSequenceResponse(projectId, rows);
             default -> buildGraphResponse(projectId, rows);
         };
     }
@@ -164,6 +165,52 @@ public class ExecuteGraphQueryUseCase {
                 .nodes(List.of())
                 .edges(List.of())
                 .mermaid(def.toString())
+                .build();
+    }
+
+    private GraphQueryDto.Response buildSequenceResponse(String projectId, List<Map<String, Object>> rows) {
+        StringBuilder sb = new StringBuilder("sequenceDiagram\n");
+        Map<String, String> participants = new LinkedHashMap<>();
+
+        for (Map<String, Object> row : rows) {
+            String srcId = strVal(row, "sourceId");
+            String tgtId = strVal(row, "targetId");
+            String srcName = coalesce(strVal(row, "sourceName"), srcId, "unknown");
+            String tgtName = coalesce(strVal(row, "targetName"), tgtId, "unknown");
+            String relType = coalesce(strVal(row, "relType"), "related");
+
+            if (srcId != null) participants.putIfAbsent(sanitizeMermaidId(srcId), srcName);
+            if (tgtId != null) participants.putIfAbsent(sanitizeMermaidId(tgtId), tgtName);
+        }
+
+        participants.forEach((id, label) ->
+                sb.append("    participant ").append(id).append(" as ").append(escapeMermaid(label)).append("\n"));
+
+        int count = 0;
+        for (Map<String, Object> row : rows) {
+            String srcId = strVal(row, "sourceId");
+            String tgtId = strVal(row, "targetId");
+            String relType = coalesce(strVal(row, "relType"), "related");
+            if (srcId != null && tgtId != null && count < 80) {
+                sb.append("    ")
+                        .append(sanitizeMermaidId(srcId))
+                        .append("->>")
+                        .append(sanitizeMermaidId(tgtId))
+                        .append(": ")
+                        .append(escapeMermaid(relType))
+                        .append("\n");
+                count++;
+            }
+        }
+
+        return GraphQueryDto.Response.builder()
+                .projectId(projectId)
+                .mode("SEQUENCE")
+                .rowCount(rows.size())
+                .rows(rows)
+                .nodes(List.of())
+                .edges(List.of())
+                .mermaid(sb.toString())
                 .build();
     }
 
