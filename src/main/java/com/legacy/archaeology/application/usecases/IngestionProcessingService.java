@@ -63,6 +63,7 @@ public class IngestionProcessingService {
                         processConfig(projectId, assetId, sourcePath, content);
                 default -> log.info("解析対象外の資産種別: {}", asset.getAssetType());
             }
+            graphSyncService.linkRoutesToProgramsAndTables(projectId);
         } catch (Exception e) {
             log.error("取込処理中にエラー sourcePath={}", sourcePath, e);
         }

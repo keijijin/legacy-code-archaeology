@@ -1,11 +1,10 @@
 package com.legacy.archaeology.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.legacy.archaeology.presentation.api.GlobalExceptionHandler;
-import com.legacy.archaeology.presentation.api.ProjectController;
 import com.legacy.archaeology.application.usecases.CreateProjectUseCase;
 import com.legacy.archaeology.application.usecases.IngestAssetUseCase;
 import com.legacy.archaeology.application.usecases.SubmitAnalysisJobUseCase;
@@ -13,12 +12,14 @@ import com.legacy.archaeology.domain.analysis.AnalysisJobRepository;
 import com.legacy.archaeology.domain.assets.AssetRepository;
 import com.legacy.archaeology.domain.knowledge.BusinessRuleRepository;
 import com.legacy.archaeology.domain.projects.ProjectRepository;
-import org.springframework.data.neo4j.core.Neo4jClient;
+import com.legacy.archaeology.presentation.api.GlobalExceptionHandler;
+import com.legacy.archaeology.presentation.api.ProjectController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -41,12 +42,21 @@ class ApiValidationSecurityTest {
 
     @BeforeEach
     void setUp() {
+        AssetRepository assetRepository = mock(AssetRepository.class);
+        BusinessRuleRepository businessRuleRepository = mock(BusinessRuleRepository.class);
+        AnalysisJobRepository analysisJobRepository = mock(AnalysisJobRepository.class);
+        Neo4jClient neo4jClient = mock(Neo4jClient.class);
+
         ProjectController controller =
                 new ProjectController(
                         createProjectUseCase,
                         ingestAssetUseCase,
                         submitAnalysisJobUseCase,
-                        projectRepository);
+                        projectRepository,
+                        assetRepository,
+                        businessRuleRepository,
+                        analysisJobRepository,
+                        neo4jClient);
         mockMvc =
                 MockMvcBuilders.standaloneSetup(controller)
                         .setControllerAdvice(new GlobalExceptionHandler())

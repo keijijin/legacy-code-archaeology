@@ -3,13 +3,13 @@ package com.legacy.archaeology.infrastructure.graph;
 import com.legacy.archaeology.infrastructure.ir.ProgramIr;
 import com.legacy.archaeology.infrastructure.ir.RouteIr;
 import com.legacy.archaeology.infrastructure.ir.TableIr;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * 中間表現（IR）を知識グラフ（Neo4j）へ反映するサービス。
@@ -98,15 +98,21 @@ public class GraphSyncService {
             for (TableIr.ColumnIr col : ir.getColumns()) {
                 neo4jClient.query("""
                         MERGE (c:Column {id: $id})
-                        SET c.name     = $name,
-                            c.dataType = $dataType,
-                            c.tableId  = $tableId
+                        SET c.projectId     = $projectId,
+                            c.sourceAssetId = $sourceAssetId,
+                            c.sourcePath    = $sourcePath,
+                            c.name          = $name,
+                            c.dataType      = $dataType,
+                            c.tableId       = $tableId
                         WITH c
                         MATCH (t:Table {id: $tableId})
                         MERGE (t)-[:HAS_COLUMN]->(c)
                         """)
                         .bindAll(Map.of(
                                 "id", ir.getId() + "-" + col.getName(),
+                                "projectId", ir.getProjectId(),
+                                "sourceAssetId", ir.getSourceAssetId() == null ? "" : ir.getSourceAssetId(),
+                                "sourcePath", ir.getSourcePath(),
                                 "name", col.getName(),
                                 "dataType", col.getDataType() == null ? "" : col.getDataType(),
                                 "tableId", ir.getId()))
@@ -128,5 +134,45 @@ public class GraphSyncService {
                         "projectId", projectId))
                 .run();
         log.debug("関係作成 {} -[{}]-> {}", fromId, relationType, toId);
+    }
+
+    public void linkRoutesToProgramsAndTables(String projectId) {
+        neo4jClient.query("""
+                MATCH (r:Route {projectId: $projectId})
+                UNWIND coalesce(r.steps, []) AS step
+                WITH r, step
+                WHERE step STARTS WITH 'bean:'
+                WITH r, toLower(replace(step, 'bean:', '')) AS beanRef
+                MATCH (p:Program {projectId: $projectId})
+                WHERE toLower(p.className) = beanRef
+                   OR toLower(replace(p.className, 'service', '')) = replace(beanRef, 'service', '')
+                   OR toLower(replace(p.className, 'job', '')) = replace(beanRef, 'job', '')
+                MERGE (r)-[:RELATION {type: 'INVOKES_PROGRAM', projectId: $projectId}]->(p)
+                """)
+                .bind(projectId).to("projectId")
+                .run();
+
+        neo4jClient.query("""
+                MATCH (r:Route {projectId: $projectId})
+                UNWIND coalesce(r.steps, []) AS step
+                WITH r, step
+                WHERE step STARTS WITH 'sql:'
+                WITH r, toUpper(step) AS sqlStep
+                MATCH (t:Table {projectId: $projectId})
+                WHERE sqlStep CONTAINS toUpper(t.tableName)
+                MERGE (r)-[:RELATION {type: 'USES_TABLE', projectId: $projectId}]->(t)
+                """)
+                .bind(projectId).to("projectId")
+                .run();
+
+        neo4jClient.query("""
+                MATCH (r:Route {projectId: $projectId})-[:RELATION {type:'INVOKES_PROGRAM', projectId:$projectId}]->(p:Program {projectId: $projectId})
+                MATCH (r)-[:RELATION {type:'USES_TABLE', projectId:$projectId}]->(t:Table {projectId: $projectId})
+                MERGE (p)-[:RELATION {type:'ACCESSES_TABLE', projectId: $projectId}]->(t)
+                """)
+                .bind(projectId).to("projectId")
+                .run();
+
+        log.info("Route/Program/Table 関係生成完了 projectId={}", projectId);
     }
 }
